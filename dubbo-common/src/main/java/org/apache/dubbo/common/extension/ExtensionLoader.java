@@ -107,6 +107,7 @@ public class ExtensionLoader<T> {
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<>();
 
+    // 依靠 Java 的 spi 进行动态加载
     private static volatile LoadingStrategy[] strategies = loadLoadingStrategies();
 
     public static void setLoadingStrategies(LoadingStrategy... strategies) {
@@ -122,6 +123,7 @@ public class ExtensionLoader<T> {
      * @since 2.7.7
      */
     private static LoadingStrategy[] loadLoadingStrategies() {
+        // 这里使用 jdk 的 spi 接口，完成 dubbo "加载策略"对象的动态加载
         return stream(load(LoadingStrategy.class).spliterator(), false)
                 .sorted()
                 .toArray(LoadingStrategy[]::new);
@@ -755,8 +757,10 @@ public class ExtensionLoader<T> {
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
         for (LoadingStrategy strategy : strategies) {
+            // 这种函数定义方式感觉有点，emmm 怪怪的
             loadDirectory(extensionClasses, strategy.directory(), type.getName(), strategy.preferExtensionClassLoader(), strategy.overridden(), strategy.excludedPackages());
             loadDirectory(extensionClasses, strategy.directory(), type.getName().replace("org.apache", "com.alibaba"), strategy.preferExtensionClassLoader(), strategy.overridden(), strategy.excludedPackages());
+            // 上面调用两次加载，看样子是用来对 apache 和 alibaba 的包的兼容
         }
 
         return extensionClasses;
@@ -789,6 +793,15 @@ public class ExtensionLoader<T> {
         loadDirectory(extensionClasses, dir, type, false, false);
     }
 
+    /**
+     *
+     * @param extensionClasses 用来带出结果
+     * @param dir 扫描的目录路径【从定制策略实现类拿到】
+     * @param type 要加载实现类的 SPI 的 interface
+     * @param extensionLoaderClassLoaderFirst TODO 这个像是某个类加载器优先级策略配置项
+     * @param overridden  因为 dubbo 的 SPI 加载是key-value 的，这里是允许覆盖的配置【是不是和 Spring 配置是否允许覆盖 BD 有点像】
+     * @param excludedPackages 扫描实现类时是否有需要排出的包
+     */
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir, String type,
                                boolean extensionLoaderClassLoaderFirst, boolean overridden, String... excludedPackages) {
         String fileName = dir + type;
