@@ -775,7 +775,7 @@ public class ExtensionLoader<T> {
         String value = defaultAnnotation.value();
         if ((value = value.trim()).length() > 0) {
             String[] names = NAME_SEPARATOR.split(value);// SPI 的 value 分隔符支持逗号，且逗号前后可以有任意空格
-            if (names.length > 1) {
+            if (names.length > 1) {// 结合上下文，这里应该表示 SPI 的 value 不支持逗号。必须是唯一的确定的。=_=
                 throw new IllegalStateException("More than 1 default extension name on extension " + type.getName()
                         + ": " + Arrays.toString(names));
             }
