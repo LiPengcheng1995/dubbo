@@ -19,6 +19,7 @@ package org.apache.dubbo.common.utils;
 /**
  * Helper Class for hold a value.
  */
+// 只是用来存值的，是为了方便扩展，所以弄出来的吧。目前来看，和直接用 T 做引用没啥区别
 public class Holder<T> {
 
     private volatile T value;

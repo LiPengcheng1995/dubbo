@@ -733,6 +733,8 @@ public class ExtensionLoader<T> {
     private Map<String, Class<?>> getExtensionClasses() {
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
+            // 同一个 ExtensionLoader 要同步，也就是说，加载同一个 interface 的 SPI 实现时是同步的
+            // TODO  这里，将锁粒度弄的尽可能小，还是比较好的
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
@@ -764,14 +766,15 @@ public class ExtensionLoader<T> {
      * extract and cache default extension name if exists
      */
     private void cacheDefaultExtensionName() {
+        // 拿到 interface 上的 SPI 注解
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
-        if (defaultAnnotation == null) {
+        if (defaultAnnotation == null) {// 没有注解，就不管了
             return;
         }
 
         String value = defaultAnnotation.value();
         if ((value = value.trim()).length() > 0) {
-            String[] names = NAME_SEPARATOR.split(value);
+            String[] names = NAME_SEPARATOR.split(value);// SPI 的 value 分隔符支持逗号，且逗号前后可以有任意空格
             if (names.length > 1) {
                 throw new IllegalStateException("More than 1 default extension name on extension " + type.getName()
                         + ": " + Arrays.toString(names));
