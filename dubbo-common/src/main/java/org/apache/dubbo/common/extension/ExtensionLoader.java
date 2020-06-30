@@ -86,27 +86,40 @@ public class ExtensionLoader<T> {
 
     private static final ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<>(64);
 
+    // key 为实现类，value 为实例
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<>(64);
 
     private final Class<?> type;
 
     private final ExtensionFactory objectFactory;
 
+    // 用来存储 alias 和id 的对应关系
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<>();
 
+    // Map<String, Class<?>> 存的东西和 cachedActivates相近
+    // 区别是 cachedActivates 和 cachedNames  一起维护了别名到 class 的映射
+    //
+    // cachedClasses 是 key 是 id/别名 ，value 是 class，独自维护了这种映射
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<>();
 
+    // 用来存此对象所负责的 interface 的所有加载到的实现类
+    // key 为 id（对标 Spring 的，也可以理解为你配置那一串名字的第一个），value 为实现类 Class
     private final Map<String, Object> cachedActivates = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<>();
     private final Holder<Object> cachedAdaptiveInstance = new Holder<>();
+    // 用来存此对象所负责的 interface 加载到的类中的 @Adaptive 打标的
     private volatile Class<?> cachedAdaptiveClass = null;
+    // 用来存储默认的实现类 name 【SPI 在 interface 上注明】
     private String cachedDefaultName;
     private volatile Throwable createAdaptiveInstanceError;
 
+    // 用来存此对象所负责的 interface 加载到的类中有 interface 入参构造函数的【我们认为这些是用来装饰的实现】
     private Set<Class<?>> cachedWrapperClasses;
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<>();
 
+    // TODO 这里是在静态代码块中的，这个类加载时就会完成初始化工作
+    // TODO 后面在构造函数时，就已经在间接依赖 strategies 进行 SPI 实现类的动态加载了
     // 依靠 Java 的 spi 进行动态加载
     private static volatile LoadingStrategy[] strategies = loadLoadingStrategies();
 
@@ -414,6 +427,7 @@ public class ExtensionLoader<T> {
         if (StringUtils.isEmpty(name)) {
             throw new IllegalArgumentException("Extension name == null");
         }
+        // TODO 这里 name 有特殊值 "true"，为啥不专门定义一个 static final 的变量？
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
@@ -421,6 +435,7 @@ public class ExtensionLoader<T> {
         Object instance = holder.get();
         if (instance == null) {
             synchronized (holder) {
+                // 双重检查锁
                 instance = holder.get();
                 if (instance == null) {
                     instance = createExtension(name);
@@ -445,7 +460,9 @@ public class ExtensionLoader<T> {
      * Return default extension, return <code>null</code> if it's not configured.
      */
     public T getDefaultExtension() {
+        // 反正有缓存，不会重复初始化，随便调啦～
         getExtensionClasses();
+        // 这里的 "true" ，是为了避免死循环【。。。。。感觉调用的有点牵强】
         if (StringUtils.isBlank(cachedDefaultName) || "true".equals(cachedDefaultName)) {
             return null;
         }
@@ -461,7 +478,9 @@ public class ExtensionLoader<T> {
     }
 
     public Set<String> getSupportedExtensions() {
+        // 拿到支持的 id/别名 和 class 的 Map
         Map<String, Class<?>> clazzes = getExtensionClasses();
+        // 封装一下，丢出去，避免被改动
         return Collections.unmodifiableSet(new TreeSet<>(clazzes.keySet()));
     }
 
@@ -620,6 +639,7 @@ public class ExtensionLoader<T> {
         return new IllegalStateException(buf.toString());
     }
 
+    // 创建实例并缓存
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
         Class<?> clazz = getExtensionClasses().get(name);
@@ -627,18 +647,23 @@ public class ExtensionLoader<T> {
             throw findException(name);
         }
         try {
+            // 通过反射创建实例
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 进行依赖注入
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
+                    // 注意，此处有 instance = injectExtension()
+                    // 目的是：将 instance 通过构造函数塞进 wrapperClass ，创建一个包装器实例，用来返回
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }
+            // 调用初始化钩子
             initExtension(instance);
             return instance;
         } catch (Throwable t) {
@@ -659,15 +684,18 @@ public class ExtensionLoader<T> {
 
         try {
             for (Method method : instance.getClass().getMethods()) {
+                // 只要 set 开头的
                 if (!isSetter(method)) {
                     continue;
                 }
+                // 不要 DisableInject 注解的【手动过滤掉】
                 /**
                  * Check {@link DisableInject} to see if we need auto injection for this property
                  */
                 if (method.getAnnotation(DisableInject.class) != null) {
                     continue;
                 }
+                // 原始类型过滤掉【这不是和 Spring 一样的套路么，依据 Java 的值传递，只关注复杂对象的注入】
                 Class<?> pt = method.getParameterTypes()[0];
                 if (ReflectUtils.isPrimitives(pt)) {
                     continue;
@@ -677,7 +705,7 @@ public class ExtensionLoader<T> {
                     String property = getSetterProperty(method);
                     Object object = objectFactory.getExtension(pt, property);
                     if (object != null) {
-                        method.invoke(instance, object);
+                        method.invoke(instance, object);// 反射调用setter
                     }
                 } catch (Exception e) {
                     logger.error("Failed to inject via method " + method.getName()
@@ -691,6 +719,8 @@ public class ExtensionLoader<T> {
         return instance;
     }
 
+    // 此处就是一个对 Lifecycle 接口的支持。。。【此处和 Spring 对 InitializingBean 还有那一大串 interface 的支持差不多】
+    // 看来写 dubbo 的人也对 Spring 了解不少
     private void initExtension(T instance) {
         if (instance instanceof Lifecycle) {
             Lifecycle lifecycle = (Lifecycle) instance;
@@ -703,6 +733,7 @@ public class ExtensionLoader<T> {
      * <p>
      * return "", if setter name with length less than 3
      */
+    // 根据驼峰命名和get方法的规范，剥离出要设置的变量名称
     private String getSetterProperty(Method method) {
         return method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
     }
@@ -798,9 +829,10 @@ public class ExtensionLoader<T> {
      * @param extensionClasses 用来带出结果
      * @param dir 扫描的目录路径【从定制策略实现类拿到】
      * @param type 要加载实现类的 SPI 的 interface
-     * @param extensionLoaderClassLoaderFirst TODO 这个像是某个类加载器优先级策略配置项
+     * @param extensionLoaderClassLoaderFirst 是否优先使用 ExtensionLoader 的类加载器
+     *        TODO 这玩意感觉有 bug ，不管是不是true ，都是优先用 ExtensionLoader 的，不行再用 System 的
      * @param overridden  因为 dubbo 的 SPI 加载是key-value 的，这里是允许覆盖的配置【是不是和 Spring 配置是否允许覆盖 BD 有点像】
-     * @param excludedPackages 扫描实现类时是否有需要排出的包
+     * @param excludedPackages 扫描实现类时是否有需要排除的包
      */
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir, String type,
                                boolean extensionLoaderClassLoaderFirst, boolean overridden, String... excludedPackages) {
@@ -843,7 +875,7 @@ public class ExtensionLoader<T> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    final int ci = line.indexOf('#');
+                    final int ci = line.indexOf('#');// # 后面的当作注释，丢掉
                     if (ci >= 0) {
                         line = line.substring(0, ci);
                     }
@@ -852,7 +884,7 @@ public class ExtensionLoader<T> {
                         try {
                             String name = null;
                             int i = line.indexOf('=');
-                            if (i > 0) {
+                            if (i > 0) {//拿到 配置的名称 和对应的 类全路径名称
                                 name = line.substring(0, i).trim();
                                 line = line.substring(i + 1).trim();
                             }
@@ -885,6 +917,7 @@ public class ExtensionLoader<T> {
 
     private void loadClass(Map<String, Class<?>> extensionClasses, java.net.URL resourceURL, Class<?> clazz, String name,
                            boolean overridden) throws NoSuchMethodException {
+        // 校验，实现类没有实现我们指定的 interface ，就报错
         if (!type.isAssignableFrom(clazz)) {
             throw new IllegalStateException("Error occurred when loading extension class (interface: " +
                     type + ", class line: " + clazz.getName() + "), class "
@@ -896,7 +929,9 @@ public class ExtensionLoader<T> {
             cacheWrapperClass(clazz);
         } else {
             clazz.getConstructor();
+            // name 以配置为主，如果没有配置，也支持自行生成
             if (StringUtils.isEmpty(name)) {
+                // 拿到类的名字【此处不关注打了弃用标记的注释】
                 name = findAnnotationName(clazz);
                 if (name.length() == 0) {
                     throw new IllegalStateException("No such extension name for the class " + clazz.getName() + " in the config " + resourceURL);
@@ -905,7 +940,9 @@ public class ExtensionLoader<T> {
 
             String[] names = NAME_SEPARATOR.split(name);
             if (ArrayUtils.isNotEmpty(names)) {
+                // 以 class 的 SimpleName 为key，Class 为 value ，扔到 cachedActivates
                 cacheActivateClass(clazz, names[0]);
+                // 这玩意和 Spring 的别名机制基本一样，
                 for (String n : names) {
                     cacheName(clazz, n);
                     saveInExtensionClass(extensionClasses, clazz, n, overridden);
@@ -985,6 +1022,8 @@ public class ExtensionLoader<T> {
      * <p>
      * which has Constructor with given class type as its only argument
      */
+    // 如果有一个传入同 interface 的构造函数，就可以将这个 class 理解为一个包装器类
+    // 专门用来装饰加工的
     private boolean isWrapperClass(Class<?> clazz) {
         try {
             clazz.getConstructor(type);

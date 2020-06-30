@@ -31,6 +31,7 @@ public interface Prioritized extends Comparable<Prioritized> {
     /**
      * The {@link Comparator} of {@link Prioritized}
      */
+    // 实现了 Prioritized 的放在 没有实现这个接口的前面
     Comparator<Object> COMPARATOR = (one, two) -> {
         boolean b1 = one instanceof Prioritized;
         boolean b2 = two instanceof Prioritized;

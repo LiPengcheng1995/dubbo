@@ -36,6 +36,8 @@ public class SpringExtensionFactory implements ExtensionFactory {
 
     private static final Set<ApplicationContext> CONTEXTS = new ConcurrentHashSet<ApplicationContext>();
 
+    // TODO 此处存疑，这里需要外界手动塞进来 Spring 上下文。
+    // TODO 是否会导致配置项中写死对 SpringExtensionFactory 这个类的依赖
     public static void addApplicationContext(ApplicationContext context) {
         CONTEXTS.add(context);
         if (context instanceof ConfigurableApplicationContext) {

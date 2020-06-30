@@ -33,6 +33,12 @@ public class AdaptiveExtensionFactory implements ExtensionFactory {
     private final List<ExtensionFactory> factories;
 
     public AdaptiveExtensionFactory() {
+        // 在这里手动调用 ExtensionLoader 进行所有实现类的加载与缓存。。。。。
+        //
+        // 其实在这里已经有点感觉了， dubbo 为了尽可能灵活的进行实现类的创建已经实现类之间的组装，同时
+        // 避免对任何框架的强制性依赖，做了不少的事情。
+        //
+        // TODO 用起来很爽的东西，一般底层都做了大量隐藏的工作
         ExtensionLoader<ExtensionFactory> loader = ExtensionLoader.getExtensionLoader(ExtensionFactory.class);
         List<ExtensionFactory> list = new ArrayList<ExtensionFactory>();
         for (String name : loader.getSupportedExtensions()) {

@@ -23,6 +23,10 @@ import org.apache.dubbo.common.extension.SPI;
 /**
  * SpiExtensionFactory
  */
+// dubbo 的一个通用拿到代码实现类的 ExtensionFactory 实现，
+// 入参是 SPI 的 API ，用来返回 SPI 有所有实现类中的封装类【一般这种实现类都能一串抻出所有的具体实现类】
+//
+// TODO 后面再看一下这个是有啥大量使用的地方没，看官方文档，大量的都是根据 URL 参数进行动态获取的
 public class SpiExtensionFactory implements ExtensionFactory {
 
     @Override
