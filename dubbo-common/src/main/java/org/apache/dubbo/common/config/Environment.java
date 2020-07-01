@@ -112,10 +112,13 @@ public class Environment extends LifecycleAdapter implements FrameworkExt {
      * @param config
      * @return
      */
+    // dubbo 的配置最开始是分布在各个地方的，比如 Application, Registry, Protocol 等等，
+    // 应用启动起来后，所有的配置都会集成在一个个的 URL 中，在运行时决定要调用的策略
     public synchronized CompositeConfiguration getPrefixedConfiguration(AbstractConfig config) {
         CompositeConfiguration prefixedConfiguration = new CompositeConfiguration(config.getPrefix(), config.getId());
         Configuration configuration = new ConfigConfigurationAdapter(config);
         if (this.isConfigCenterFirst()) {
+            // TODO 后面看一下这几个都是从哪拿的
             // The sequence would be: SystemConfiguration -> AppExternalConfiguration -> ExternalConfiguration -> AbstractConfig -> PropertiesConfiguration
             // Config center has the highest priority
             prefixedConfiguration.addConfiguration(systemConfiguration);

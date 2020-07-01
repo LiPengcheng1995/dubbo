@@ -156,6 +156,7 @@ public class ExtensionLoader<T> {
 
     private ExtensionLoader(Class<?> type) {
         this.type = type;
+        // 包裹着 ExtensionFactory 的 ExtensionLoader 是用来获得实例的，不会进行依赖注入，所以不用 objectFactory
         objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
     }
 

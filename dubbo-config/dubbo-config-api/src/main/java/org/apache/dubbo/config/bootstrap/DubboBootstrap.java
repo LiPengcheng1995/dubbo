@@ -582,12 +582,16 @@ public class DubboBootstrap extends GenericEventListener {
     }
 
     private void startConfigCenter() {
+        // 从 config 中拿到配置中心的配置
         Collection<ConfigCenterConfig> configCenters = configManager.getConfigCenters();
 
+        // 没有预先配置，尝试自己new 一个，从环境补充变量
         // check Config Center
         if (CollectionUtils.isEmpty(configCenters)) {
             ConfigCenterConfig configCenterConfig = new ConfigCenterConfig();
+            // 根据环境，刷新 configCenterConfig 的配置
             configCenterConfig.refresh();
+            // 从环境补充的变量是否满足了 configCenterConfig 的所有配置，如果满足，就可以塞进去了
             if (configCenterConfig.isValid()) {
                 configManager.addConfigCenter(configCenterConfig);
                 configCenters = configManager.getConfigCenters();
@@ -607,6 +611,7 @@ public class DubboBootstrap extends GenericEventListener {
             }
             environment.setDynamicConfiguration(compositeDynamicConfiguration);
         }
+        // 修正完 configManager 的配置，整体刷新一下
         configManager.refreshAll();
     }
 

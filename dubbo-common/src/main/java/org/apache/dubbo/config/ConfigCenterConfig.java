@@ -256,6 +256,7 @@ public class ConfigCenterConfig extends AbstractConfig {
     @Override
     @Parameter(excluded = true)
     public boolean isValid() {
+        // address 一定要有，且配置好了协议
         if (StringUtils.isEmpty(address)) {
             return false;
         }

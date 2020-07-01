@@ -457,12 +457,15 @@ public abstract class AbstractConfig implements Serializable {
     public void refresh() {
         Environment env = ApplicationModel.getEnvironment();
         try {
+            // 从环境上下文中拿到，一个存储变量kv的混合，【有点像 Spring 中控制变量的 PropertyPlaceholderConfigurer】
+            // TODO 自行回归一下 Spring 的变量控制
             CompositeConfiguration compositeConfiguration = env.getPrefixedConfiguration(this);
             // loop methods, get override value and set the new value back to method
             Method[] methods = getClass().getMethods();
             for (Method method : methods) {
                 if (MethodUtils.isSetter(method)) {
                     try {
+                        // 先从方法名入手拿到后面的变量名，然后从 compositeConfiguration 拿到变量对应的 value，带出来，并转化成 String
                         String value = StringUtils.trim(compositeConfiguration.getString(extractPropertyName(getClass(), method)));
                         // isTypeMatch() is called to avoid duplicate and incorrect update, for example, we have two 'setGeneric' methods in ReferenceConfig.
                         if (StringUtils.isNotEmpty(value) && ClassUtils.isTypeMatch(method.getParameterTypes()[0], value)) {
@@ -473,7 +476,7 @@ public abstract class AbstractConfig implements Serializable {
                                 this.getClass().getSimpleName() +
                                 ", please make sure every property has getter/setter method provided.");
                     }
-                } else if (isParametersSetter(method)) {
+                } else if (isParametersSetter(method)) {// 算是对特殊setter规范的支持
                     String value = StringUtils.trim(compositeConfiguration.getString(extractPropertyName(getClass(), method)));
                     if (StringUtils.isNotEmpty(value)) {
                         Map<String, String> map = invokeGetParameters(getClass(), this);
