@@ -599,6 +599,7 @@ public class DubboBootstrap extends GenericEventListener {
             }
         }
 
+        // TODO 感觉像是增加对动态配置的支持，跑代码试一下
         if (CollectionUtils.isNotEmpty(configCenters)) {
             CompositeDynamicConfiguration compositeDynamicConfiguration = new CompositeDynamicConfiguration();
             for (ConfigCenterConfig configCenter : configCenters) {
@@ -636,6 +637,7 @@ public class DubboBootstrap extends GenericEventListener {
      * useAsConfigCenter of registryConfig is null or true
      */
     private void useRegistryAsConfigCenterIfNecessary() {
+        // 有动态配置或者从configManager拿到了配置，就直接跳过此步骤
         // we use the loading status of DynamicConfiguration to decide whether ConfigCenter has been initiated.
         if (environment.getDynamicConfiguration().isPresent()) {
             return;

@@ -61,6 +61,7 @@ import static org.apache.dubbo.config.AbstractConfig.getTagName;
 import static org.apache.dubbo.config.Constants.PROTOCOLS_SUFFIX;
 import static org.apache.dubbo.config.Constants.REGISTRIES_SUFFIX;
 
+// 看着像是一个专门维护配置的地方，维护对应的kv
 public class ConfigManager extends LifecycleAdapter implements FrameworkExt {
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigManager.class);

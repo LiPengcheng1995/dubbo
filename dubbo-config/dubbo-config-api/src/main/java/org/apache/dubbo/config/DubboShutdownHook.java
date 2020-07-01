@@ -64,12 +64,13 @@ public class DubboShutdownHook extends Thread {
         return DUBBO_SHUTDOWN_HOOK;
     }
 
+    // 被注册成了关闭时的钩子，在 jvm 关闭时，会调用这里
     @Override
     public void run() {
         if (logger.isInfoEnabled()) {
             logger.info("Run shutdown hook now.");
         }
-
+        // TODO 关闭流程，后面可以熟悉一下
         callback();
         doDestroy();
     }
@@ -91,7 +92,9 @@ public class DubboShutdownHook extends Thread {
     public void register() {
         if (registered.compareAndSet(false, true)) {
             DubboShutdownHook dubboShutdownHook = getDubboShutdownHook();
+            // 加上关闭钩子
             Runtime.getRuntime().addShutdownHook(dubboShutdownHook);
+            // 发送关闭钩子注册的事件
             dispatch(new DubboShutdownHookRegisteredEvent(dubboShutdownHook));
         }
     }
@@ -103,6 +106,7 @@ public class DubboShutdownHook extends Thread {
         if (registered.compareAndSet(true, false)) {
             DubboShutdownHook dubboShutdownHook = getDubboShutdownHook();
             Runtime.getRuntime().removeShutdownHook(dubboShutdownHook);
+            // 发送关闭钩子取消注册的事件
             dispatch(new DubboShutdownHookUnregisteredEvent(dubboShutdownHook));
         }
     }
