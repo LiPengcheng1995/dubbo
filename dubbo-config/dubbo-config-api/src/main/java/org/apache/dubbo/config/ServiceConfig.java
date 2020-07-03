@@ -249,6 +249,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             // 检查接口和方法的配置
             // getMethods() 获得配置的方法
             checkInterfaceAndMethods(interfaceClass, getMethods());
+            // 检测依赖的实现类是否实现了 interface
             checkRef();
             generic = Boolean.FALSE.toString();
         }
