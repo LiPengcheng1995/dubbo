@@ -422,8 +422,10 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
 
     @Override
     protected void computeValidRegistryIds() {
+        // 先尝试走 Application 的配置
         super.computeValidRegistryIds();
         if (StringUtils.isEmpty(getRegistryIds())) {
+            // 尝试走 provider 的配置
             if (getProvider() != null && StringUtils.isNotEmpty(getProvider().getRegistryIds())) {
                 setRegistryIds(getProvider().getRegistryIds());
             }

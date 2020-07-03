@@ -225,7 +225,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         configInitializers.forEach(e -> e.initServiceConfig(this));
 
         // if protocol is not injvm checkRegistry
-        if (!isOnlyInJvm()) {
+        if (!isOnlyInJvm()) {// 如果不只是提供内部调用，还支持外部调用，就需要捋一下注册中心
             checkRegistry();
         }
         this.refresh();
@@ -246,6 +246,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            // 检查接口和方法的配置
+            // getMethods() 获得配置的方法
             checkInterfaceAndMethods(interfaceClass, getMethods());
             checkRef();
             generic = Boolean.FALSE.toString();

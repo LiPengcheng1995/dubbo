@@ -178,6 +178,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
      * Check whether the registry config is exists, and then conversion it to {@link RegistryConfig}
      */
     public void checkRegistry() {
+        // 尝试从上层配置中拿到 registryId 的配置
         convertRegistryIdsToRegistries();
 
         for (RegistryConfig registryConfig : registries) {
@@ -212,12 +213,13 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         if (!interfaceClass.isInterface()) {
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
         }
+        // 如果有专门配置的方法级别的配置
         // check if methods exist in the remote service interface
         if (CollectionUtils.isNotEmpty(methods)) {
             for (MethodConfig methodBean : methods) {
                 methodBean.setService(interfaceClass.getName());
                 methodBean.setServiceId(this.getId());
-                methodBean.refresh();
+                methodBean.refresh();// 处理一下配置中的变量引用
                 String methodName = methodBean.getName();
                 if (StringUtils.isEmpty(methodName)) {
                     throw new IllegalStateException("<dubbo:method> name attribute is required! Please check: " +
@@ -271,8 +273,10 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
     private void convertRegistryIdsToRegistries() {
+        // 先尝试通过上层配置进行兜底
         computeValidRegistryIds();
         if (StringUtils.isEmpty(registryIds)) {
+            // 没兜住，保证 registries 有值
             if (CollectionUtils.isEmpty(registries)) {
                 List<RegistryConfig> registryConfigs = ApplicationModel.getConfigManager().getDefaultRegistries();
                 if (registryConfigs.isEmpty()) {
@@ -344,7 +348,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
     
     protected void computeValidRegistryIds() {
+        // 这里没有定制 registryId
         if (StringUtils.isEmpty(getRegistryIds())) {
+            // 有配置 Application ，且 Application 有配置 registryId ，就走他的
             if (getApplication() != null && StringUtils.isNotEmpty(getApplication().getRegistryIds())) {
                 setRegistryIds(getApplication().getRegistryIds());
             }

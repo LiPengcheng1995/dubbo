@@ -183,6 +183,7 @@ public class DubboBootstrap extends GenericEventListener {
     }
 
     private DubboBootstrap() {
+        onEvent();
         configManager = ApplicationModel.getConfigManager();
         environment = ApplicationModel.getEnvironment();
 
