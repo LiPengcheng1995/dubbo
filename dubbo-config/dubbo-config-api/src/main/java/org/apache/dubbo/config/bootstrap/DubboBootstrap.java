@@ -142,8 +142,10 @@ public class DubboBootstrap extends GenericEventListener {
 
     private final ExecutorRepository executorRepository = ExtensionLoader.getExtensionLoader(ExecutorRepository.class).getDefaultExtension();
 
+    // FrameworkExt 的实现类，管理 dubbo 配置的
     private final ConfigManager configManager;
 
+    // FrameworkExt 实现类，管理环境的
     private final Environment environment;
 
     private ReferenceConfigCache cache;
@@ -183,10 +185,11 @@ public class DubboBootstrap extends GenericEventListener {
     }
 
     private DubboBootstrap() {
-        onEvent();
+//        onEvent();
         configManager = ApplicationModel.getConfigManager();
         environment = ApplicationModel.getEnvironment();
 
+        // 加上关闭的钩子
         DubboShutdownHook.getDubboShutdownHook().register();
         ShutdownHookCallbacks.INSTANCE.addCallback(new ShutdownHookCallback() {
             @Override
@@ -505,12 +508,25 @@ public class DubboBootstrap extends GenericEventListener {
             return;
         }
 
+
+        // 加载 FrameworkExt 并调用其初始化函数
+        // 包括配置、环境的一些东西
         ApplicationModel.initFrameworkExts();
 
+        // --------- start ---------
+        // 感觉这一端都是针对配置中心的维护，这个配置中心给我的感觉就是，一个应用/集群，统一把 dubbo 配置文件放在
+        // 一个远程地址，刷新时统一拉一下，方便统一维护
+
+        // 尝试从配置中拿到 配置中心 的东西并刷新
         startConfigCenter();
 
+        // 配置中没有 配置中心 的东西，看能否从默认配置拿到配置中心，然后重走一下 startConfigCenter()
         useRegistryAsConfigCenterIfNecessary();
 
+        // --------- end ---------
+
+        // 上面关于 配置中心 搞了一大堆配置，这里尝试从远程加载配置
+        // 把 注册中心、协议 的东西配置好
         loadRemoteConfigs();
 
         checkGlobalConfigs();
@@ -528,6 +544,7 @@ public class DubboBootstrap extends GenericEventListener {
         // check Application
         ConfigValidationUtils.validateApplicationConfig(getApplication());
 
+        // 配置元数据中心 https://lexburner.github.io/dubbo-metadata/
         // check Metadata
         Collection<MetadataReportConfig> metadatas = configManager.getMetadataConfigs();
         if (CollectionUtils.isEmpty(metadatas)) {
@@ -545,6 +562,9 @@ public class DubboBootstrap extends GenericEventListener {
             }
         }
 
+        // 配置 provider 的整体配置
+        // dubbo 中 service 是某个 interface 的配置，provider 是 provider 整体的配置
+        // reference 和 consumer 的关系也一样
         // check Provider
         Collection<ProviderConfig> providers = configManager.getProviders();
         if (CollectionUtils.isEmpty(providers)) {
@@ -572,8 +592,10 @@ public class DubboBootstrap extends GenericEventListener {
             ConfigValidationUtils.validateConsumerConfig(consumerConfig);
         }
 
+        // 监视中心的配置
         // check Monitor
         ConfigValidationUtils.validateMonitorConfig(getMonitor());
+        // TODO 到这里了
         // check Metrics
         ConfigValidationUtils.validateMetricsConfig(getMetrics());
         // check Module
@@ -653,6 +675,9 @@ public class DubboBootstrap extends GenericEventListener {
             return;
         }
 
+        // 从这里看， registry 不只是治理生产和消费的注册中心，也可以用作配置中心
+        // 看了一下 xml ，可以这么写
+        // <dubbo:registry protocol="zookeeper" address="127.0.0.1:2181" use-as-config-center="false"/>
         configManager.getDefaultRegistries().stream()
                 .filter(registryConfig -> registryConfig.getUseAsConfigCenter() == null || registryConfig.getUseAsConfigCenter())
                 .forEach(registryConfig -> {
@@ -683,6 +708,7 @@ public class DubboBootstrap extends GenericEventListener {
     }
 
     private void loadRemoteConfigs() {
+        /// 拿到配置的注册中心 id ，并配置好【把一些引用变量的都替换掉】
         // registry ids to registry configs
         List<RegistryConfig> tmpRegistries = new ArrayList<>();
         Set<String> registryIds = configManager.getRegistryIds();
@@ -697,8 +723,10 @@ public class DubboBootstrap extends GenericEventListener {
             }
         });
 
+        // 存起来
         configManager.addRegistries(tmpRegistries);
 
+        // 照例，把 协议 也配置好
         // protocol ids to protocol configs
         List<ProtocolConfig> tmpProtocols = new ArrayList<>();
         Set<String> protocolIds = configManager.getProtocolIds();
