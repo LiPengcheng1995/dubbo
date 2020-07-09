@@ -170,7 +170,7 @@ public class ConfigValidationUtils {
         // check && override if necessary
         List<URL> registryList = new ArrayList<URL>();
         ApplicationConfig application = interfaceConfig.getApplication();
-        List<RegistryConfig> registries = interfaceConfig.getRegistries();
+        List<RegistryConfig> registries = interfaceConfig.getRegistries();//拿到配置好的这个服务的注册中心
         if (CollectionUtils.isNotEmpty(registries)) {
             for (RegistryConfig config : registries) {
                 String address = config.getAddress();
@@ -186,10 +186,11 @@ public class ConfigValidationUtils {
                     if (!map.containsKey(PROTOCOL_KEY)) {
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
+                    // address 支持通过分隔符配置多个地址，这里将他们拆开
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
-
+                        // 把一些对应的协议参数拼好
                         url = URLBuilder.from(url)
                                 .addParameter(REGISTRY_KEY, url.getProtocol())
                                 .setProtocol(extractRegistryType(url))

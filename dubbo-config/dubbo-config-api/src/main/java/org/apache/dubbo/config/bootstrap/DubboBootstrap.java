@@ -503,6 +503,8 @@ public class DubboBootstrap extends GenericEventListener {
     /**
      * Initialize
      */
+    // 整体来说，就是把大面上的东西先配置好，比如说
+    // 协议、注册中心、元数据中心、监控、应用、通用生产、通用消费、事件监听啥的
     private void initialize() {
         if (!initialized.compareAndSet(false, true)) {
             return;
@@ -529,10 +531,13 @@ public class DubboBootstrap extends GenericEventListener {
         // 把 注册中心、协议 的东西配置好
         loadRemoteConfigs();
 
+        // 把 dubbo 常用的全局配置项都过一遍，把一些监控的、生产消费的之类的配置搞好
         checkGlobalConfigs();
 
+        // 初始化元数据的写入支持
         initMetadataService();
 
+        // 初始化事件监听机制
         initEventListener();
 
         if (logger.isInfoEnabled()) {
@@ -592,14 +597,20 @@ public class DubboBootstrap extends GenericEventListener {
             ConfigValidationUtils.validateConsumerConfig(consumerConfig);
         }
 
-        // 监视中心的配置
+        // TODO monitor 和 metrics 有啥区别
+        // 监视中心的配置，监控 tps、tp99 啥的
         // check Monitor
         ConfigValidationUtils.validateMonitorConfig(getMonitor());
-        // TODO 到这里了
+
+        // metrics 翻译过来是 度量 ，有点像 jd 的 ump 一样，是用来统计服务的 tps、tp99 啥的
+        // 可以参见 https://xlj44400.github.io/2017/08/02/monitor/
         // check Metrics
         ConfigValidationUtils.validateMetricsConfig(getMetrics());
+        // TODO 不知道干啥的
         // check Module
         ConfigValidationUtils.validateModuleConfig(getModule());
+
+        // 证书与加密配置，不关心
         // check Ssl
         ConfigValidationUtils.validateSslConfig(getSsl());
     }
@@ -639,6 +650,7 @@ public class DubboBootstrap extends GenericEventListener {
     }
 
     private void startMetadataReport() {
+        // 校验通过
         ApplicationConfig applicationConfig = getApplication();
 
         String metadataType = applicationConfig.getMetadataType();
@@ -656,6 +668,9 @@ public class DubboBootstrap extends GenericEventListener {
             return;
         }
 
+
+        // 把 metaData 的配置整成一个 url ，并生成 MetadataReport 存到 MetadataReportInstance 里
+        // 猜测后面会从 MetadataReportInstance 里存的 MetadataReport 调用方法来保存各种元数据
         MetadataReportInstance.init(metadataReportConfig.toUrl());
     }
 
@@ -749,8 +764,13 @@ public class DubboBootstrap extends GenericEventListener {
      * Initialize {@link MetadataService} from {@link WritableMetadataService}'s extension
      */
     private void initMetadataService() {
+        // 初始化元数据汇报的各种类
         startMetadataReport();
+        // 从 application 拿到要使用的 metaData 类型的 key，并拿到对应的扩展
         this.metadataService = getExtension(getMetadataType());
+        // 将 metadataService 的暴露进行委托
+        // 【这里 ConfigurableMetadataServiceExporter 就是走了一个通用的暴露 service rpc 的操作】
+        // TODO 这里是否涉及死循环？？？
         this.metadataServiceExporter = new ConfigurableMetadataServiceExporter(metadataService);
     }
 
