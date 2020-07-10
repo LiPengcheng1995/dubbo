@@ -135,6 +135,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     private DubboBootstrap bootstrap;
 
+    // 暴露的服务
     /**
      * The exported services
      */
@@ -488,8 +489,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         String host = findConfigedHosts(protocolConfig, registryURLs, map);
         // 拿到用来连接注册中心的本机器端口
         Integer port = findConfigedPorts(protocolConfig, name, map);
+        // 根据上面拿到的 协议名称、ip、端口名、本服务路径、参数map 创建 URL
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
+        // 支持根据协议，加载自定义的 ConfiguratorFactory 并拿到 Configurator ，然后调用这个处理 url
         // You can customize Configurator to append extra parameters
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
@@ -497,10 +500,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
 
+        // 在 <dubbo:scope scope=""/>,<dubbo:service scope=""/> 这里配置的 scope
         String scope = url.getParameter(SCOPE_KEY);
+        // 如果配置的 scope 不是 none（none 表示不暴露接口的意思）
         // don't export when none is configured
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
+            // 如果配置的不是 remote，就在本地暴露
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
                 exportLocal(url);
@@ -566,13 +572,17 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
      * always export injvm
      */
     private void exportLocal(URL url) {
+        // 根据之前拼装好的url，拷贝出一个新的，并设置为 injvm 的暴露，不支持 rpc
         URL local = URLBuilder.from(url)
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
+        //  PROXY_FACTORY 封装 interfaceClass 类型的 ref 为 Invoker。默认使用 JavassistProxyFactory 策略
+        //  PROTOCOL 是暴露的 Protocol 的一个适配器，他会根据传入的url进行暴露通信
         Exporter<?> exporter = PROTOCOL.export(
                 PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, local));
+        // 暴露完后，记录一下句柄
         exporters.add(exporter);
         logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry url : " + local);
     }
@@ -694,6 +704,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                                       Map<String, String> map) {
         Integer portToBind = null;
 
+        // 一样的套路，先尝试从机器环境中取
         // parse bind port from environment
         String port = getValueFromConfig(protocolConfig, DUBBO_PORT_TO_BIND);
         portToBind = parsePort(port);
@@ -701,25 +712,33 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // if there's no bind port found from environment, keep looking up.
         if (portToBind == null) {
             portToBind = protocolConfig.getPort();
+            // 尝试从配置文件中取
             if (provider != null && (portToBind == null || portToBind == 0)) {
                 portToBind = provider.getPort();
             }
             final int defaultPort = ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(name).getDefaultPort();
+            // 没有拿到，就用协议默认的
             if (portToBind == null || portToBind == 0) {
                 portToBind = defaultPort;
             }
+            // 默认的无效，就随机一个
             if (portToBind <= 0) {
+                // 看看这个协议有没有记录之前随机好的
                 portToBind = getRandomPort(name);
                 if (portToBind == null || portToBind < 0) {
+                    // 没有随机好的，就拿到一个可用的端口
                     portToBind = getAvailablePort(defaultPort);
+                    // 放到记录随机的 map 中
                     putRandomPort(name, portToBind);
                 }
             }
         }
 
+        // 把本地用的端口放好
         // save bind port, used as url's key later
         map.put(BIND_PORT_KEY, String.valueOf(portToBind));
 
+        // 和 host 一样的套路
         // registry port, not used as bind port by default
         String portToRegistryStr = getValueFromConfig(protocolConfig, DUBBO_PORT_TO_REGISTRY);
         Integer portToRegistry = parsePort(portToRegistryStr);

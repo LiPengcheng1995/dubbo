@@ -49,10 +49,10 @@ public interface ProxyFactory {
     /**
      * create invoker.
      *
-     * @param <T>
-     * @param proxy
-     * @param type
-     * @param url
+     * @param <T> 实现类的 interface
+     * @param proxy 要代理的实现类
+     * @param type 实现类的 interface
+     * @param url 暴露的一些规则
      * @return invoker
      */
     @Adaptive({PROXY_KEY})

@@ -116,7 +116,12 @@ public abstract class Wrapper {
         return WRAPPER_MAP.computeIfAbsent(c, key -> makeWrapper(key));
     }
 
+    // 根据 class c 的类型，生成一个封装其方法和内部属性存取的 wrapper 类，这个类封装了对 c 类型方法的调用
+    // 后面如果有请求进来，直接调用 Wrapper 即可，就忽略了复杂的适配。
+    //
+    // TODO 这里是直接用 Javaassist 生成一个代理的类，硬编码的类通过对类型的提前适配，避免了调用时的反射，提升了效率
     private static Wrapper makeWrapper(Class<?> c) {
+        // 基本类型不管
         if (c.isPrimitive()) {
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
         }
@@ -124,43 +129,79 @@ public abstract class Wrapper {
         String name = c.getName();
         ClassLoader cl = ClassUtils.getClassLoader(c);
 
+        // c1，拼装 setPropertyValue 方法
         StringBuilder c1 = new StringBuilder("public void setPropertyValue(Object o, String n, Object v){ ");
+        // c2，拼装 getPropertyValue 方法
         StringBuilder c2 = new StringBuilder("public Object getPropertyValue(Object o, String n){ ");
+        // c3，拼装 invokeMethod 方法
         StringBuilder c3 = new StringBuilder("public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws " + InvocationTargetException.class.getName() + "{ ");
 
+        // 创建了一个和 c 一个类型的局部变量 w，【根据我们反射的套路，其实这个类型也是第一个参数 o 的类型】
+        // 代码：
+        // "name的值" w;
+        // try{
+        //     w = (("name的值")$1);
+        // } catch(Throwable e){
+        //  throw new IllegalArgumentException(e);
+        // }
         c1.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
+        // 同上
         c2.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
+        // 同上
         c3.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
 
+        // 这个用来收集在 c 类型中的变量名称（key）、变量类型(value)
         Map<String, Class<?>> pts = new HashMap<>(); // <property name, property types>
+        // 这个用来收集在 c 类型中的方法描述信息(key)、Method 实例(value)
         Map<String, Method> ms = new LinkedHashMap<>(); // <method desc, Method instance>
+        // c 类型中的方法名列表
         List<String> mns = new ArrayList<>(); // method names.
+        // “定义在当前类中的方法”的名称【因为传进来的有可能是 interface、也有可能是impl】
         List<String> dmns = new ArrayList<>(); // declaring method names.
 
+        // 先处理属性的东西
         // get all public field.
         for (Field f : c.getFields()) {
             String fn = f.getName();
             Class<?> ft = f.getType();
+            // 静态、不持久化的字段不管
             if (Modifier.isStatic(f.getModifiers()) || Modifier.isTransient(f.getModifiers())) {
                 continue;
             }
-
+            // 在 c1 中增加对此属性的支持，c1 的set函数，第二个入参是属性名，第三个入参是值
+            // 代码：
+            // if ($2.equals("fn的值")){
+            //  w."fn的值" = ("ft的值")$3;// 当然，这里写的比较简单，这里会根据属性类型做对应的转换
+            //  return;
+            // }
             c1.append(" if( $2.equals(\"").append(fn).append("\") ){ w.").append(fn).append("=").append(arg(ft, "$3")).append("; return; }");
+            // if ($2.equals("fn的值")){
+            //  return ($w)w."fn的值";
+            // }
             c2.append(" if( $2.equals(\"").append(fn).append("\") ){ return ($w)w.").append(fn).append("; }");
             pts.put(fn, ft);
         }
 
+        // 处理方法的东西
         Method[] methods = c.getMethods();
+        // 检查拿到的方法列表是否有属于 c 自己的声明的方法【非 Object 的】
         // get all public method.
         boolean hasMethod = hasMethods(methods);
         if (hasMethod) {
             c3.append(" try{");
             for (Method m : methods) {
+                // 忽略 Object 的方法
                 //ignore Object's method.
                 if (m.getDeclaringClass() == Object.class) {
                     continue;
                 }
 
+                // 增加对此名称的方法的处理，
+                // invoke 方法第一个入参是实例的引用，第二个入参是方法名，第三四个入参为参数类型列表和值列表
+                // 注意：这里做了对重载的支持
+                //
+                // 代码:
+                // if("mn的值".equals($2)&&$3.length=="len的值")
                 String mn = m.getName();
                 c3.append(" if( \"").append(mn).append("\".equals( $2 ) ");
                 int len = m.getParameterTypes().length;
@@ -168,12 +209,18 @@ public abstract class Wrapper {
 
                 boolean override = false;
                 for (Method m2 : methods) {
+                    // 看一下这个类中是否有方法重载（两个 method 不一样，但是名字一样）
                     if (m != m2 && m.getName().equals(m2.getName())) {
                         override = true;
                         break;
                     }
                 }
-                if (override) {
+                if (override) { //存在重载，需要增加判断
+                    // 这个方法有入参
+                    // if("mn的值".equals($2)&&$3.length=="len的值"&&$3[0].getName.equals("这里从m的参数里拿出对应位置的类型比对"))
+                    //
+                    // 表面上看这里存疑，如果重载的方法有0入参，这里就比不对了！
+                    // 仔细想，之前比过参数长度，0入参直接就对上了，所以这里没问题
                     if (len > 0) {
                         for (int l = 0; l < len; l++) {
                             c3.append(" && ").append(" $3[").append(l).append("].getName().equals(\"")
@@ -183,10 +230,12 @@ public abstract class Wrapper {
                 }
 
                 c3.append(" ) { ");
-
+                // 前面拼完了判断条件，这里开始进入 if
                 if (m.getReturnType() == Void.TYPE) {
+                    // w."mn的值"("$4的值按照参数列表转化好类型"); return;
                     c3.append(" w.").append(mn).append('(').append(args(m.getParameterTypes(), "$4")).append(");").append(" return null;");
                 } else {
+                    // return ($w)w."mn的值"("$4的值按照参数列表转化好类型");
                     c3.append(" return ($w)w.").append(mn).append('(').append(args(m.getParameterTypes(), "$4")).append(");");
                 }
 
@@ -198,18 +247,25 @@ public abstract class Wrapper {
                 }
                 ms.put(ReflectUtils.getDesc(m), m);
             }
+            // 把里面的方法循环匹配完了，这里 catch 一下异常
             c3.append(" } catch(Throwable e) { ");
             c3.append("     throw new java.lang.reflect.InvocationTargetException(e); ");
             c3.append(" }");
         }
 
+        // 里面没有匹配到对应的方法，这里抛异常，没找到
         c3.append(" throw new " + NoSuchMethodException.class.getName() + "(\"Not found method \\\"\"+$2+\"\\\" in class " + c.getName() + ".\"); }");
 
+        // 其实上面循环 method 已经把 getter、setter 用通用逻辑处理掉了，但是这里还是打算在 c1、c2 支持一下
+        // 最开始有疑问，以为最开始从属性入手，已经把 getter、setter 弄完了。
+        // 这里可以考虑有对应的 method 但是和 field 对不上的情况【不是所有的 getter 都有唯一准确对应的 field 】
         // deal with get/set method.
         Matcher matcher;
-        for (Map.Entry<String, Method> entry : ms.entrySet()) {
+        for (Map.Entry<String, Method> entry : ms.entrySet()) {// 这里直接遍历上面塞好的 ms ，已经过滤掉 Object 的方法了
             String md = entry.getKey();
             Method method = entry.getValue();
+            // 在 c1、c2 里支持那些 getter、setter 函数【当然，这些不一定有对应的底层 field】
+            // 这里感觉根据 getter、setter 的名字，造方法的同时，也给造了一波属性
             if ((matcher = ReflectUtils.GETTER_METHOD_DESC_PATTERN.matcher(md)).matches()) {
                 String pn = propertyName(matcher.group(1));
                 c2.append(" if( $2.equals(\"").append(pn).append("\") ){ return ($w)w.").append(method.getName()).append("(); }");

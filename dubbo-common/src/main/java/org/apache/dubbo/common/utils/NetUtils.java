@@ -96,9 +96,11 @@ public class NetUtils {
     }
 
     public static int getAvailablePort(int port) {
+        // 如果端口明显无效，就尝试获得一个可用的端口
         if (port <= 0) {
             return getAvailablePort();
         }
+        // 如果端口有效，确保端口可用即可，如果被占用，就从这个开始往上轮
         for (int i = port; i < MAX_PORT; i++) {
             try (ServerSocket ignored = new ServerSocket(i)) {
                 return i;
