@@ -49,6 +49,10 @@ public interface Protocol {
      * @return exporter reference for exported service, useful for unexport the service later
      * @throws RpcException thrown when error occurs during export the service, for example: port is occupied
      */
+    // 将 invoker 暴露出去，有以下特点：
+    // 1. Protocol 负责维护 rpc 的上下文的信息（比如消费者的地址）
+    // 2. export() 方法应该做到幂等，也就是可以多次调用，只要入参一样，结果就一样
+    // 3. invoker 由框架传入， Protocol 实现类只管调用即可，无需关心其内部逻辑
     @Adaptive
     <T> Exporter<T> export(Invoker<T> invoker) throws RpcException;
 

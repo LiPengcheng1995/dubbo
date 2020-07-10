@@ -54,7 +54,7 @@ public class GroupServiceKeyCache {
         }
         return serviceKey;
     }
-
+    // group/serviceName:version:port
     private String createServiceKey(String serviceName, String serviceVersion, int port) {
         StringBuilder buf = new StringBuilder();
         if (StringUtils.isNotEmpty(serviceGroup)) {

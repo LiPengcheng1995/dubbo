@@ -44,11 +44,13 @@ public class ProtocolUtils {
 
     public static String serviceKey(int port, String serviceName, String serviceVersion, String serviceGroup) {
         serviceGroup = serviceGroup == null ? "" : serviceGroup;
+        // 这是根据 group 维护多套生成 key 的规则
         GroupServiceKeyCache groupServiceKeyCache = groupServiceKeyCacheMap.get(serviceGroup);
         if (groupServiceKeyCache == null) {
             groupServiceKeyCacheMap.putIfAbsent(serviceGroup, new GroupServiceKeyCache(serviceGroup));
             groupServiceKeyCache = groupServiceKeyCacheMap.get(serviceGroup);
         }
+        // 调用 groupName 对应的规则，生成key
         return groupServiceKeyCache.getServiceKey(serviceName, serviceVersion, port);
     }
 
