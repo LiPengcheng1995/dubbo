@@ -266,6 +266,8 @@ public abstract class Wrapper {
             Method method = entry.getValue();
             // 在 c1、c2 里支持那些 getter、setter 函数【当然，这些不一定有对应的底层 field】
             // 这里感觉根据 getter、setter 的名字，造方法的同时，也给造了一波属性
+            // TODO 这里其实还有一种考虑，之前都是直接做 w."属性名"=XX ，其实应该是调用被增强类的方法，不应该自己维护，
+            // TODO 否则万一 getter、setter、有定制逻辑，就容易丢
             if ((matcher = ReflectUtils.GETTER_METHOD_DESC_PATTERN.matcher(md)).matches()) {
                 String pn = propertyName(matcher.group(1));
                 c2.append(" if( $2.equals(\"").append(pn).append("\") ){ return ($w)w.").append(method.getName()).append("(); }");
@@ -281,16 +283,20 @@ public abstract class Wrapper {
                 pts.put(pn, pt);
             }
         }
+        // 如果c1、c2 也有没有命中的，和c3一样抛异常处理就行
         c1.append(" throw new " + NoSuchPropertyException.class.getName() + "(\"Not found property \\\"\"+$2+\"\\\" field or setter method in class " + c.getName() + ".\"); }");
         c2.append(" throw new " + NoSuchPropertyException.class.getName() + "(\"Not found property \\\"\"+$2+\"\\\" field or setter method in class " + c.getName() + ".\"); }");
 
+        // 拿到一个唯一id
         // make class
         long id = WRAPPER_CLASS_COUNTER.getAndIncrement();
         ClassGenerator cc = ClassGenerator.newInstance(cl);
         cc.setClassName((Modifier.isPublic(c.getModifiers()) ? Wrapper.class.getName() : c.getName() + "$sw") + id);
         cc.setSuperClass(Wrapper.class);
 
+        // 增加一个默认构造函数
         cc.addDefaultConstructor();
+        // 上面收集的那一堆东西，塞好【因为是类级别的，所以就直接 static 就行类】
         cc.addField("public static String[] pns;"); // property name array.
         cc.addField("public static " + Map.class.getName() + " pts;"); // property type map.
         cc.addField("public static String[] mns;"); // all method name array.

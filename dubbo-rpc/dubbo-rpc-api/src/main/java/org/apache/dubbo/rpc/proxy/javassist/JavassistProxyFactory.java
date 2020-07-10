@@ -37,7 +37,7 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
 
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
-        // 这是，先根据 proxy 的类型，出一个 wrapper？？
+        // 这是，先根据 proxy 的类型，构造一个 wrapper 的实现类，此类对 T 类型进行了统一设置、调用的封装
         // TODO Wrapper cannot handle this scenario correctly: the classname contains '$'
         final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
         return new AbstractProxyInvoker<T>(proxy, type, url) {
@@ -45,6 +45,8 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
             protected Object doInvoke(T proxy, String methodName,
                                       Class<?>[] parameterTypes,
                                       Object[] arguments) throws Throwable {
+                // 反射调用直接用 wrapper 的实现，其实这里就不是反射了，是正儿八经的调用，大大提升了效率
+                // 这里是不是也有点像闭包的感觉。。。。
                 return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
             }
         };
