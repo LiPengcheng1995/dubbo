@@ -43,6 +43,13 @@ public class ChannelHandlers {
     }
 
     protected ChannelHandler wrapInternal(ChannelHandler handler, URL url) {
+        // 从外到内，handler 层次为： MultiMessageHandler-->HeartbeatHandler --> 请求分发逻辑handler【是直接调用handler还是丢线程池调用handler】
+        //
+        // ExtensionLoader.getExtensionLoader(Dispatcher.class).getAdaptiveExtension().dispatch(handler, url)
+        // 上面根据 url 将 handler 进行封装，感觉是增加一些和输入请求分发的处理逻辑
+        //
+        // new HeartbeatHandler(),增加对心跳的相关支持
+        // new MultiMessageHandler(),增加对参数批量请求入参的支持
         return new MultiMessageHandler(new HeartbeatHandler(ExtensionLoader.getExtensionLoader(Dispatcher.class)
                 .getAdaptiveExtension().dispatch(handler, url)));
     }

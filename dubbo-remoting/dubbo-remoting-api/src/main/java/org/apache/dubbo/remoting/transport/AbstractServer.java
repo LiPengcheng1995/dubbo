@@ -56,18 +56,20 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
     private ExecutorRepository executorRepository = ExtensionLoader.getExtensionLoader(ExecutorRepository.class).getDefaultExtension();
 
     public AbstractServer(URL url, ChannelHandler handler) throws RemotingException {
+        // 设置解码器、超时时间、连接超时时间【看着像是 心跳包 的吧】等
         super(url, handler);
-        localAddress = getUrl().toInetSocketAddress();
+        localAddress = getUrl().toInetSocketAddress();// 存本地ip
 
         String bindIp = getUrl().getParameter(Constants.BIND_IP_KEY, getUrl().getHost());
-        int bindPort = getUrl().getParameter(Constants.BIND_PORT_KEY, getUrl().getPort());
+        int bindPort = getUrl().getParameter(Constants.BIND_PORT_KEY, getUrl().getPort());//存本地端口
         if (url.getParameter(ANYHOST_KEY, false) || NetUtils.isInvalidLocalHost(bindIp)) {
             bindIp = ANYHOST_VALUE;
         }
-        bindAddress = new InetSocketAddress(bindIp, bindPort);
+        bindAddress = new InetSocketAddress(bindIp, bindPort);// 监听本地端口，并存这个连接器实例
         this.accepts = url.getParameter(ACCEPTS_KEY, DEFAULT_ACCEPTS);
         this.idleTimeout = url.getParameter(IDLE_TIMEOUT_KEY, DEFAULT_IDLE_TIMEOUT);
         try {
+            // 打开服务
             doOpen();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " bind " + getBindAddress() + ", export " + getLocalAddress());
@@ -76,6 +78,7 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
             throw new RemotingException(url.toInetSocketAddress(), null, "Failed to bind " + getClass().getSimpleName()
                     + " on " + getLocalAddress() + ", cause: " + t.getMessage(), t);
         }
+        // 创建处理的线程池
         executor = executorRepository.createExecutorIfAbsent(url);
     }
 
@@ -83,9 +86,10 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
 
     protected abstract void doClose() throws Throwable;
 
+    // 创建服务后，允许向已经创建的服务中添加新的封装实现
     @Override
     public void reset(URL url) {
-        if (url == null) {
+        if (url == null) {//无效入参，不处理
             return;
         }
         try {
@@ -99,7 +103,7 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
             logger.error(t.getMessage(), t);
         }
         try {
-            if (url.hasParameter(IDLE_TIMEOUT_KEY)) {
+            if (url.hasParameter(IDLE_TIMEOUT_KEY)) {// 空闲超时时间只有一个，就以最新的为准吧，互相覆盖
                 int t = url.getParameter(IDLE_TIMEOUT_KEY, 0);
                 if (t > 0) {
                     this.idleTimeout = t;
@@ -108,8 +112,8 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
         } catch (Throwable t) {
             logger.error(t.getMessage(), t);
         }
-        executorRepository.updateThreadpool(url, executor);
-        super.setUrl(getUrl().addParameters(url.getParameters()));
+        executorRepository.updateThreadpool(url, executor);// 根据 url 的线程池配置，更新线程池
+        super.setUrl(getUrl().addParameters(url.getParameters()));// TODO 这是强行把参数覆盖了一遍？？？？
     }
 
     @Override

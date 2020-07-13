@@ -40,6 +40,7 @@ public class TelnetHandlerAdapter extends ChannelHandlerAdapter implements Telne
         StringBuilder buf = new StringBuilder();
         message = message.trim();
         String command;
+        // 从 message 中拿到 命令、参数
         if (message.length() > 0) {
             int i = message.indexOf(' ');
             if (i > 0) {
@@ -53,13 +54,17 @@ public class TelnetHandlerAdapter extends ChannelHandlerAdapter implements Telne
             command = "";
         }
         if (command.length() > 0) {
+            // 以命令为 name ，加载对应的 SPI 实现类
             if (extensionLoader.hasExtension(command)) {
+                // 检测命令是否有效【未被受限】
                 if (commandEnabled(channel.getUrl(), command)) {
                     try {
+                        // 加载对应的 SPI 实现并调用
                         String result = extensionLoader.getExtension(command).telnet(channel, message);
                         if (result == null) {
                             return null;
                         }
+                        // 拼装结果并返回
                         buf.append(result);
                     } catch (Throwable t) {
                         buf.append(t.getMessage());
@@ -83,6 +88,7 @@ public class TelnetHandlerAdapter extends ChannelHandlerAdapter implements Telne
         return buf.toString();
     }
 
+    // 如果入参的 url 中的 telnet 支持的命令列表不为空，且不包括此 command，返回不支持
     private boolean commandEnabled(URL url, String command) {
         String supportCommands = url.getParameter(TELNET);
         if (StringUtils.isEmpty(supportCommands)) {

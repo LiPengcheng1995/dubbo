@@ -110,6 +110,7 @@ public class DubboProtocol extends AbstractProtocol {
         @Override
         public CompletableFuture<Object> reply(ExchangeChannel channel, Object message) throws RemotingException {
 
+            // 入参必须是是 Invocation
             if (!(message instanceof Invocation)) {
                 throw new RemotingException(channel, "Unsupported request: "
                         + (message == null ? null : (message.getClass().getName() + ": " + message))
@@ -121,6 +122,7 @@ public class DubboProtocol extends AbstractProtocol {
             // need to consider backward-compatibility if it's a callback
             if (Boolean.TRUE.toString().equals(inv.getObjectAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
                 String methodsStr = invoker.getUrl().getParameters().get("methods");
+                // 先判断要调用的方法是否在 invoker 中存在
                 boolean hasMethod = false;
                 if (methodsStr == null || !methodsStr.contains(",")) {
                     hasMethod = inv.getMethodName().equals(methodsStr);
@@ -141,11 +143,16 @@ public class DubboProtocol extends AbstractProtocol {
                     return null;
                 }
             }
+            // 设置 rpc 的参数
             RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+            // 把入参丢到对应的 invoker 封装中，拿到结果
             Result result = invoker.invoke(inv);
+            // 这里最后直接把 result 里面的东西吐出去了。
+            // 感觉这里的扩展点主要是为了一些针对结果的统一后处理
             return result.thenApply(Function.identity());
         }
 
+        // 请求过来，如果入参是 Invocation 就调用本类的实现。否则调用 telnet 的入参 String 的实现
         @Override
         public void received(Channel channel, Object message) throws RemotingException {
             if (message instanceof Invocation) {
@@ -156,11 +163,13 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 连接，入参直接传 onconnect，自行封装一个 RpcInvocation 再调用上面的东西
         @Override
         public void connected(Channel channel) throws RemotingException {
             invoke(channel, ON_CONNECT_KEY);
         }
 
+        // 同 connected
         @Override
         public void disconnected(Channel channel) throws RemotingException {
             if (logger.isDebugEnabled()) {
@@ -236,12 +245,16 @@ public class DubboProtocol extends AbstractProtocol {
     Invoker<?> getInvoker(Channel channel, Invocation inv) throws RemotingException {
         boolean isCallBackServiceInvoke = false;
         boolean isStubServiceInvoke = false;
+        // 拿到本地暴露服务的端口号
         int port = channel.getLocalAddress().getPort();
+        // 拿到请求的坐标【要请求哪个接口】
         String path = (String) inv.getObjectAttachments().get(PATH_KEY);
 
+        // 判断此请求是否是 client 的回调
         // if it's callback service on client side
         isStubServiceInvoke = Boolean.TRUE.toString().equals(inv.getObjectAttachments().get(STUB_EVENT_KEY));
         if (isStubServiceInvoke) {
+            // 回调就记录远程 client 的端口号？？
             port = channel.getRemoteAddress().getPort();
         }
 
@@ -252,12 +265,14 @@ public class DubboProtocol extends AbstractProtocol {
             inv.getObjectAttachments().put(IS_CALLBACK_SERVICE_INVOKE, Boolean.TRUE.toString());
         }
 
+        // 根据 port、path、version、group，算出 serviceKey
         String serviceKey = serviceKey(
                 port,
                 path,
                 (String) inv.getObjectAttachments().get(VERSION_KEY),
                 (String) inv.getObjectAttachments().get(GROUP_KEY)
         );
+        // 从暴露的 map 中根据 key 拿到要调用的服务封装
         DubboExporter<?> exporter = (DubboExporter<?>) exporterMap.get(serviceKey);
 
         if (exporter == null) {
@@ -265,6 +280,7 @@ public class DubboProtocol extends AbstractProtocol {
                     ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress() + ", message:" + getInvocationWithoutData(inv));
         }
 
+        // 把封装的 invoker 丢出去【这玩意里面封装了具体的业务实现】
         return exporter.getInvoker();
     }
 
@@ -302,6 +318,7 @@ public class DubboProtocol extends AbstractProtocol {
         }
 
         openServer(url);
+        // 一些序列化和反序列化的支持
         optimizeSerialization(url);
 
         return exporter;
@@ -318,10 +335,13 @@ public class DubboProtocol extends AbstractProtocol {
                 synchronized (this) {
                     server = serverMap.get(key);
                     if (server == null) {
+                        // 创建好 server ，暴露出去，然后把 server 实例塞进 serverMap
                         serverMap.put(key, createServer(url));
                     }
                 }
             } else {
+                // TODO server 已经存在，即对应的端口已经有服务了，就进行服务的覆盖！！！！！
+                // TODO 根据上层使用，每个 interface 的暴露都会专门先找个可用的端口，不会在同一个端口暴露两个服务
                 // server supports reset, use together with override
                 server.reset(url);
             }
@@ -347,19 +367,21 @@ public class DubboProtocol extends AbstractProtocol {
 
         ExchangeServer server;
         try {
+            // 将 requestHandler 封装完善后，在指定端口创建 server 并暴露出去
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);
         }
 
         str = url.getParameter(CLIENT_KEY);
+        // 如果扩展项不支持配置的 client ，就报错
         if (str != null && str.length() > 0) {
             Set<String> supportedTypes = ExtensionLoader.getExtensionLoader(Transporter.class).getSupportedExtensions();
             if (!supportedTypes.contains(str)) {
                 throw new RpcException("Unsupported client type: " + str);
             }
         }
-
+        // 这里又 TMD 封了一层，目的暂不清楚，看着像是将实现具体逻辑的的 RemotingServer 适配成 ProtocolServer
         return new DubboProtocolServer(server);
     }
 

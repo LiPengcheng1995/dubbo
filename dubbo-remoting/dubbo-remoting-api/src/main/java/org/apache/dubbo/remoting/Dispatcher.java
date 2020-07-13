@@ -27,6 +27,7 @@ import org.apache.dubbo.remoting.transport.dispatcher.all.AllDispatcher;
 @SPI(AllDispatcher.NAME)
 public interface Dispatcher {
 
+    // 分发器
     /**
      * dispatch the message to threadpool.
      *

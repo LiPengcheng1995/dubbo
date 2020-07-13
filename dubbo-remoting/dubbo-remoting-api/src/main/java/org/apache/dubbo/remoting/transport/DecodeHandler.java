@@ -34,12 +34,15 @@ public class DecodeHandler extends AbstractChannelHandlerDelegate {
         super(handler);
     }
 
+    // 收到消息后做反序列化处理
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+        // Decodeable 直接调用对应的函数，内部会自己完成反序列化
         if (message instanceof Decodeable) {
             decode(message);
         }
 
+        // Request、Response ，对内部的数据部分，做上面的判断
         if (message instanceof Request) {
             decode(((Request) message).getData());
         }
@@ -48,6 +51,7 @@ public class DecodeHandler extends AbstractChannelHandlerDelegate {
             decode(((Response) message).getResult());
         }
 
+        // 解码好，透传
         handler.received(channel, message);
     }
 

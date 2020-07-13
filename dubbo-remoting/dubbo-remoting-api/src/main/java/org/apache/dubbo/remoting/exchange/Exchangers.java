@@ -66,7 +66,9 @@ public class Exchangers {
         if (handler == null) {
             throw new IllegalArgumentException("handler == null");
         }
+        // 使用 exchange 对应的策略进行反序列化？？
         url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
+        // getExchanger(url) 拿到的应该是 HeaderExchanger
         return getExchanger(url).bind(url, handler);
     }
 

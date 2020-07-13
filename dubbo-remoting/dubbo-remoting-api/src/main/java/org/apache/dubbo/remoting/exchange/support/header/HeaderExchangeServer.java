@@ -57,14 +57,17 @@ public class HeaderExchangeServer implements ExchangeServer {
     private final RemotingServer server;
     private AtomicBoolean closed = new AtomicBoolean(false);
 
+    // 维护线程池来跑 closeTimerTask·
     private static final HashedWheelTimer IDLE_CHECK_TIMER = new HashedWheelTimer(new NamedThreadFactory("dubbo-server-idleCheck", true), 1,
             TimeUnit.SECONDS, TICKS_PER_WHEEL);
 
+    // 存储要跑的检查任务
     private CloseTimerTask closeTimerTask;
 
     public HeaderExchangeServer(RemotingServer server) {
         Assert.notNull(server, "server == null");
         this.server = server;
+        // 如果 server 不支持处理空闲超过指定时间就自动关闭，这里就通过 定时任务 支持一下
         startIdleCheckTask(getUrl());
     }
 

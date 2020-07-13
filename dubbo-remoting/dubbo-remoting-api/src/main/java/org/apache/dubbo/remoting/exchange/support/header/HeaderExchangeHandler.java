@@ -42,6 +42,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.READONLY_EVENT;
 /**
  * ExchangeReceiver
  */
+// 只是用 HeaderExchangeChannel 将 channel 封装了一层。感觉是和一些头部设置有关，先不关系，看主流程吧
 public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     protected static final Logger logger = LoggerFactory.getLogger(HeaderExchangeHandler.class);
@@ -121,6 +122,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     @Override
     public void connected(Channel channel) throws RemotingException {
+        // 将 channel 封装了一层
         ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         handler.connected(exchangeChannel);
     }

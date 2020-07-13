@@ -51,6 +51,8 @@ import static org.apache.dubbo.common.constants.CommonConstants.SSL_ENABLED_KEY;
 /**
  * NettyServer.
  */
+// AbstractServer 不仅是 RemotingServer 的实现类，支持了 Server 生命周期的相关东西
+// 还是 ChannelHandler 的实现类，是对构造函数传入的 ChannelHandler 的一个封装，在启动 Netty server 时会将 this 穿进去
 public class NettyServer extends AbstractServer implements RemotingServer {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
@@ -74,6 +76,9 @@ public class NettyServer extends AbstractServer implements RemotingServer {
     public NettyServer(URL url, ChannelHandler handler) throws RemotingException {
         // you can customize name and type of client thread pool by THREAD_NAME_KEY and THREADPOOL_KEY in CommonConstants.
         // the handler will be wrapped: MultiMessageHandler->HeartbeatHandler->handler
+        //
+        // ChannelHandlers.wrap(),增加对 心跳包、参数批量打包请求、handler处理时机定制 三个功能的处理逻辑的支持
+        // ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME) 给url的某个参数设置一个默认值。。。。
         super(ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME), ChannelHandlers.wrap(handler, url));
     }
 
@@ -84,9 +89,12 @@ public class NettyServer extends AbstractServer implements RemotingServer {
      */
     @Override
     protected void doOpen() throws Throwable {
-        bootstrap = new ServerBootstrap();
+        bootstrap = new ServerBootstrap();// 存储 netty 的启动类
 
+        // netty 启动线程组
         bossGroup = NettyEventLoopFactory.eventLoopGroup(1, "NettyServerBoss");
+
+        // io 线程组
         workerGroup = NettyEventLoopFactory.eventLoopGroup(
                 getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 "NettyServerWorker");
@@ -110,12 +118,13 @@ public class NettyServer extends AbstractServer implements RemotingServer {
                                     SslHandlerInitializer.sslServerHandler(getUrl(), nettyServerHandler));
                         }
                         ch.pipeline()
-                                .addLast("decoder", adapter.getDecoder())
-                                .addLast("encoder", adapter.getEncoder())
+                                .addLast("decoder", adapter.getDecoder())// netty的基本的反序列化配置
+                                .addLast("encoder", adapter.getEncoder())// netty的基本的序列化配置
                                 .addLast("server-idle-handler", new IdleStateHandler(0, 0, idleTimeout, MILLISECONDS))
-                                .addLast("handler", nettyServerHandler);
+                                .addLast("handler", nettyServerHandler);// 具体业务的逻辑
                     }
                 });
+        // 绑定服务
         // bind
         ChannelFuture channelFuture = bootstrap.bind(getBindAddress());
         channelFuture.syncUninterruptibly();

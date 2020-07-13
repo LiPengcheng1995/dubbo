@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface ExchangeHandler extends ChannelHandler, TelnetHandler {
 
+    // 和 TelnetHandler 相比，看着像是做了基本的反序列化封装的
     /**
      * reply.
      *

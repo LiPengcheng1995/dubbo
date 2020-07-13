@@ -47,12 +47,16 @@ public class Transporters {
         if (handlers == null || handlers.length == 0) {
             throw new IllegalArgumentException("handlers == null");
         }
+        // 如果 handler 存在多个，就包装一个分发器
         ChannelHandler handler;
         if (handlers.length == 1) {
             handler = handlers[0];
         } else {
+            // 分发器 ChannelHandlerDispatcher 只是一个封装，有请求过来就 for 循环一个一个调用
+            // 有点像一个监听器链的处理思路
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // 这里确定，一个 url 用于绑定，一个实现 handler 用于传入参数、执行逻辑
         return getTransporter().bind(url, handler);
     }
 

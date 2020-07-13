@@ -28,6 +28,8 @@ import java.util.stream.Stream;
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
  * @see org.apache.dubbo.rpc.RpcInvocation
  */
+// Invocation 是用来传递要调用的类名称、方法名称、参数之类的，可以理解为一个封装数据结构的包
+// Invoker 用来封装具体的实现逻辑，是方法的封装
 public interface Invocation {
 
     String getTargetServiceUniqueName();

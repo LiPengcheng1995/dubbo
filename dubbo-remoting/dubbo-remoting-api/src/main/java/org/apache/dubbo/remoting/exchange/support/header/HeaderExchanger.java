@@ -41,6 +41,12 @@ public class HeaderExchanger implements Exchanger {
 
     @Override
     public ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
+        // 在外面封装一下，从外到内： DecodeHandler --> HeaderExchangeHandler --> handler
+        // DecodeHandler： 解码功能
+        // HeaderExchangeHandler：头部信息处理功能
+
+        // Transporters.bind() 创建 Server 监听本地对应端口，并将封装好的 ChannelHandler 穿进去封装好，有请求过来就传进 ChannelHandler 执行
+        // new HeaderExchangeServer() 将 Transporters.bind() 拿到的 server 进行完善，如果 server 不支持空闲超过指定时间关闭，这里就通过定时任务支持此功能
         return new HeaderExchangeServer(Transporters.bind(url, new DecodeHandler(new HeaderExchangeHandler(handler))));
     }
 

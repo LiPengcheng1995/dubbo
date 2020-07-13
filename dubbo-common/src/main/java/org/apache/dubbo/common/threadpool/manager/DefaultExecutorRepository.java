@@ -75,6 +75,7 @@ public class DefaultExecutorRepository implements ExecutorRepository {
         if (CONSUMER_SIDE.equalsIgnoreCase(url.getParameter(SIDE_KEY))) {
             componentKey = CONSUMER_SIDE;
         }
+        // executors 存的是端口和线程池的关系，一个端口意味着一个服务，就要有一个对应的按要求配置好的线程池
         Map<Integer, ExecutorService> executors = data.computeIfAbsent(componentKey, k -> new ConcurrentHashMap<>());
         Integer portKey = url.getPort();
         ExecutorService executor = executors.computeIfAbsent(portKey, k -> createExecutor(url));
