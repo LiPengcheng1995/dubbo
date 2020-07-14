@@ -540,14 +540,18 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                             registryURL = registryURL.addParameter(PROXY_KEY, proxy);
                         }
 
-                        // TODO 到这里了
+                        // registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()) ，把暴露服务的 url 当作一个参数，放在注册url的export属性下
+                        // PROXY_FACTORY.getInvoker()，和之前的套路一样，把 ref 实现包装一下，包成 interfaceClass 类
                         Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
+                        // TODO 把 invoker 和 ServiceConfig 绑定一下，目前还不知道为啥要专门带一下 ServiceConfig
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
-
+                        // 暴露服务【这里和本地暴露不通，会根据协议找到 RegistryProtocol】
                         Exporter<?> exporter = PROTOCOL.export(wrapperInvoker);
+                        // 把服务的句柄存起来，
                         exporters.add(exporter);
                     }
                 } else {
+                    // 要暴露到远程，但是没有配置注册中心，就只在本地暴露
                     if (logger.isInfoEnabled()) {
                         logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                     }

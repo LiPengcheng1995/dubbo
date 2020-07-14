@@ -129,6 +129,7 @@ public class RegistryProtocol implements Protocol {
     private final Map<URL, NotifyListener> overrideListeners = new ConcurrentHashMap<>();
     private final Map<String, ServiceConfigurationListener> serviceConfigurationListeners = new ConcurrentHashMap<>();
     private final ProviderConfigurationListener providerConfigurationListener = new ProviderConfigurationListener();
+    // key: provider url ,value: 暴露服务的句柄
     //To solve the problem of RMI repeated exposure port conflicts, the services that have been exposed are no longer exposed.
     //providerurl <--> exporter
     private final ConcurrentMap<String, ExporterChangeableWrapper<?>> bounds = new ConcurrentHashMap<>();
@@ -196,15 +197,18 @@ public class RegistryProtocol implements Protocol {
         // url to export locally
         URL providerUrl = getProviderUrl(originInvoker);
 
+        // TODO 这里注意，同一个应用同时是一个服务的生产者和消费者，会覆盖信息
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
         //  subscription information to cover.
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
+        // 监听注册中心服务变动消息，并刷新 provider
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
+        // 本地暴露服务
         //export invoker
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
@@ -212,9 +216,11 @@ public class RegistryProtocol implements Protocol {
         final Registry registry = getRegistry(originInvoker);
         final URL registeredProviderUrl = getUrlToRegistry(providerUrl, registryUrl);
 
+        // 确定是否需要暴露服务
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // 暴露本地服务到注册中心
             register(registryUrl, registeredProviderUrl);
         }
 
@@ -357,6 +363,8 @@ public class RegistryProtocol implements Protocol {
         return registryFactory.getRegistry(registryUrl);
     }
 
+    // TODO 牛逼啊：最开始的 registry ，表示这是一个表示注册的 url ，这里将 registry  这个 key 代表的参数
+    // TODO 拿出来塞到头，这表示这个 key 代表的参数才是具体的注册中心沟通方式，比如 zk、redis。。。。。
     protected URL getRegistryUrl(Invoker<?> originInvoker) {
         URL registryUrl = originInvoker.getUrl();
         if (REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {
@@ -405,6 +413,7 @@ public class RegistryProtocol implements Protocol {
     }
 
     private URL getSubscribedOverrideUrl(URL registeredProviderUrl) {
+        // TODO 这里将协议覆盖成了 provider ？
         return registeredProviderUrl.setProtocol(PROVIDER_PROTOCOL)
                 .addParameters(CATEGORY_KEY, CONFIGURATORS_CATEGORY, CHECK_KEY, String.valueOf(false));
     }
@@ -415,6 +424,7 @@ public class RegistryProtocol implements Protocol {
      * @param originInvoker
      * @return
      */
+    // 从之前塞好的 export ，拿出要在本地暴露服务的 url
     private URL getProviderUrl(final Invoker<?> originInvoker) {
         String export = originInvoker.getUrl().getParameterAndDecoded(EXPORT_KEY);
         if (export == null || export.length() == 0) {
@@ -630,11 +640,15 @@ public class RegistryProtocol implements Protocol {
                     CONFIGURATORS_CATEGORY));
             logger.debug("subscribe url: " + subscribeUrl + ", override urls: " + matchedUrls);
 
+            // 没有需要处理的数据，结束任务
             // No matching results
             if (matchedUrls.isEmpty()) {
                 return;
             }
 
+            // 把上面拿到的匹配的 consumer url 过滤一下
+            // UrlUtils::isConfigurator 只要 override 类型的协议和 category 属性为 configurators 的
+            // TODO 个人认为 override 类型的协议是我们在控制端手动改配置的场景触发的
             this.configurators = Configurator.toConfigurators(classifyUrls(matchedUrls, UrlUtils::isConfigurator))
                     .orElse(configurators);
 
@@ -650,26 +664,31 @@ public class RegistryProtocol implements Protocol {
             }
             //The origin invoker
             URL originUrl = RegistryProtocol.this.getProviderUrl(invoker);
+            // 拿到 provider url
             String key = getCacheKey(originInvoker);
-            ExporterChangeableWrapper<?> exporter = bounds.get(key);
+            ExporterChangeableWrapper<?> exporter = bounds.get(key);// 拿到暴露服务的句柄
             if (exporter == null) {
                 logger.warn(new IllegalStateException("error state, exporter should not be null"));
                 return;
             }
             //The current, may have been merged many times
-            URL currentUrl = exporter.getInvoker().getUrl();
+            URL currentUrl = exporter.getInvoker().getUrl();// 拿到暴露服务句柄的url，这个可能改过不少次了
+            // 感觉像是把之前收到的最新的变动先保存到 configurators ，这里再把 configurators 的配置同步到句柄的 url 里
             //Merged with this configuration
             URL newUrl = getConfigedInvokerUrl(configurators, currentUrl);
+            // 先不管
             newUrl = getConfigedInvokerUrl(providerConfigurationListener.getConfigurators(), newUrl);
             newUrl = getConfigedInvokerUrl(serviceConfigurationListeners.get(originUrl.getServiceKey())
                     .getConfigurators(), newUrl);
             if (!currentUrl.equals(newUrl)) {
+                // 变化后句柄的 url 有变化，刷新以下服务
                 RegistryProtocol.this.reExport(originInvoker, newUrl);
                 logger.info("exported provider url changed, origin url: " + originUrl +
                         ", old export url: " + currentUrl + ", new export url: " + newUrl);
             }
         }
 
+        // 筛选出和本 provider 对应的 consumer url
         private List<URL> getMatchedUrls(List<URL> configuratorUrls, URL currentSubscribe) {
             List<URL> result = new ArrayList<URL>();
             for (URL url : configuratorUrls) {
@@ -679,6 +698,7 @@ public class RegistryProtocol implements Protocol {
                     overrideUrl = url.addParameter(CATEGORY_KEY, CONFIGURATORS_CATEGORY);
                 }
 
+                // 判断传入的url是否和注册的URL是匹配的消费者、生产者
                 // Check whether url is to be applied to the current service
                 if (UrlUtils.isMatch(currentSubscribe, overrideUrl)) {
                     result.add(url);

@@ -39,6 +39,15 @@ public interface NotifyListener {
      *
      * @param urls The list of registered information , is always not empty. The meaning is the same as the return value of {@link org.apache.dubbo.registry.RegistryService#lookup(URL)}.
      */
+    // 当收到一个服务改变的通知时，会调用这个方法。
+    // 此接口的实现类要实现以下功能：
+    // 1. 变动的通知都是接口纬度和数据类型纬度，（是比较大块的），而不是改了哪一个小地方就通知哪个小地方，用户也不用拿到变更的内容后和之前版本的状态做对比（直接覆盖就好）
+    // 2. 订阅后的第一次通知必须是全量的通知【一共有多少生产/消费，都是啥，最全的通知】
+    // 3. 出现改变时，可以根据改变的内容分别通知对应的模块，比如：生产者、消费者、路由之类的。但是每个模块的通知，必须是全的（此处参考第一点）
+    // 4. 即使一个数据类型是空的，也要通知一个空的 protocol 。（意思是一定要通知，不能私吞变动。这样能统一出一个兜底的空操作，该报警报警，该干啥干啥）
+    // 5. 通知的先后顺序和注册中心通知的顺序必须保持严格一致（通过 FIFO 队列、对比版本号、单线程慢慢跑 ，怎么整都行，但是一定要保证着）
+    //
+    // 入参的url，是注册中心传来的信息，总是非空，每个 url 和 {@link org.apache.dubbo.registry.RegistryService#lookup(URL)} 反查的拿到的结果一样
     void notify(List<URL> urls);
 
 }
