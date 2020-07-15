@@ -30,6 +30,7 @@ import org.springframework.core.Ordered;
  *
  * @since 2.7.5
  */
+// 这个应该是关注开始结束时的事件
 public class DubboBootstrapApplicationListener extends OneTimeExecutionApplicationContextEventListener
         implements Ordered {
 
@@ -48,9 +49,9 @@ public class DubboBootstrapApplicationListener extends OneTimeExecutionApplicati
 
     @Override
     public void onApplicationContextEvent(ApplicationContextEvent event) {
-        if (event instanceof ContextRefreshedEvent) {
+        if (event instanceof ContextRefreshedEvent) { // Spring 上下文刷新
             onContextRefreshedEvent((ContextRefreshedEvent) event);
-        } else if (event instanceof ContextClosedEvent) {
+        } else if (event instanceof ContextClosedEvent) {// Spring 上下文关闭
             onContextClosedEvent((ContextClosedEvent) event);
         }
     }

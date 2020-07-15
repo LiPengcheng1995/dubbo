@@ -39,6 +39,7 @@ import static org.springframework.beans.factory.BeanFactoryUtils.beansOfTypeIncl
  * @see SmartApplicationListener
  * @since 2.7.5
  */
+// 这个关注生命周期多一些
 public class DubboLifecycleComponentApplicationListener extends OneTimeExecutionApplicationContextEventListener {
 
     /**

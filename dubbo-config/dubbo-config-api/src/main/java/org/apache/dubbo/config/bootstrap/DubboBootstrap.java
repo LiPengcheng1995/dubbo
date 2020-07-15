@@ -170,6 +170,7 @@ public class DubboBootstrap extends GenericEventListener {
 
     private List<ServiceConfigBase<?>> exportedServices = new ArrayList<>();
 
+    // 异步暴露服务
     private List<Future<?>> asyncExportingFutures = new ArrayList<>();
 
     private List<CompletableFuture<Object>> asyncReferringFutures = new ArrayList<>();
@@ -983,19 +984,23 @@ public class DubboBootstrap extends GenericEventListener {
     }
 
     private void exportServices() {
+        // 这是把 DubboBootStrap 初始化塞的那些通用服务暴露出来了
         configManager.getServices().forEach(sc -> {
             // TODO, compatible with ServiceConfig.export()
-            ServiceConfig serviceConfig = (ServiceConfig) sc;
+            ServiceConfig serviceConfig = (ServiceConfig) sc;// 强转型
             serviceConfig.setBootstrap(this);
 
             if (exportAsync) {
+                // 这应该是一个通用的线程池，如果配置了异步，就由线程池进行暴露服务
                 ExecutorService executor = executorRepository.getServiceExporterExecutor();
                 Future<?> future = executor.submit(() -> {
                     sc.export();
-                    exportedServices.add(sc);
+                    exportedServices.add(sc);// TODO 用线程池玩，这玩意不给来个线程安全类吗
                 });
+                // 记录任务句柄
                 asyncExportingFutures.add(future);
             } else {
+                // 如果不需要异步暴露服务，就直接在这里调用
                 sc.export();
                 exportedServices.add(sc);
             }

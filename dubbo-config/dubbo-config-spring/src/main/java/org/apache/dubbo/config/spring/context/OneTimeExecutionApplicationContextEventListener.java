@@ -31,6 +31,7 @@ import java.util.Objects;
  *
  * @since 2.7.5
  */
+// 确保单次执行，避免事件在多层 Spring 上下文之间传播
 abstract class OneTimeExecutionApplicationContextEventListener implements ApplicationListener, ApplicationContextAware {
 
     private ApplicationContext applicationContext;
@@ -54,6 +55,7 @@ abstract class OneTimeExecutionApplicationContextEventListener implements Applic
      * @param event {@link ApplicationEvent}
      * @return
      */
+    // 判断事件的源头是否是对应的 Spring 上下文
     private boolean isOriginalEventSource(ApplicationEvent event) {
         return (applicationContext == null) // Current ApplicationListener is not a Spring Bean, just was added
                 // into Spring's ConfigurableApplicationContext
