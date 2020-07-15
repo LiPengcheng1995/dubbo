@@ -101,6 +101,7 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport implements Co
      * @since 2.7.5
      */
     private void registerApplicationListeners(BeanDefinitionRegistry registry) {
+        // 确保在 Spring 上下文已经注册这两个 Bean
         registerBeans(registry, DubboLifecycleComponentApplicationListener.class);
         registerBeans(registry, DubboBootstrapApplicationListener.class);
     }
@@ -112,6 +113,7 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport implements Co
      * @see AnnotationConfigUtils
      * @since 2.7.5
      */
+    // TODO 这是。。启动 Spring 的注解支持？
     private void registerAnnotationConfigProcessors(BeanDefinitionRegistry registry) {
         AnnotationConfigUtils.registerAnnotationConfigProcessors(registry);
     }
