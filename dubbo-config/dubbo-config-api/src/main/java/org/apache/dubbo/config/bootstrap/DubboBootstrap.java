@@ -770,7 +770,7 @@ public class DubboBootstrap extends GenericEventListener {
         this.metadataService = getExtension(getMetadataType());
         // 将 metadataService 的暴露进行委托
         // 【这里 ConfigurableMetadataServiceExporter 就是走了一个通用的暴露 service rpc 的操作】
-        // TODO 这里是否涉及死循环？？？
+        // BootStrap 在启动时会自行调用暴露这个服务
         this.metadataServiceExporter = new ConfigurableMetadataServiceExporter(metadataService);
     }
 
