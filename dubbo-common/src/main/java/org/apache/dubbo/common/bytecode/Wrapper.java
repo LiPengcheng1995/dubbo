@@ -266,8 +266,8 @@ public abstract class Wrapper {
             Method method = entry.getValue();
             // 在 c1、c2 里支持那些 getter、setter 函数【当然，这些不一定有对应的底层 field】
             // 这里感觉根据 getter、setter 的名字，造方法的同时，也给造了一波属性
-            // TODO 这里其实还有一种考虑，之前都是直接做 w."属性名"=XX ，其实应该是调用被增强类的方法，不应该自己维护，
-            // TODO 否则万一 getter、setter、有定制逻辑，就容易丢
+            // TODO 上面的逻辑是直接维护这些属性，也就是直接进行变量的赋值；如果是考虑 getter/setter 的定制逻辑的话，
+            // TODO 就是这里的逻辑，这里会走那些 w 的方法
             if ((matcher = ReflectUtils.GETTER_METHOD_DESC_PATTERN.matcher(md)).matches()) {
                 String pn = propertyName(matcher.group(1));
                 c2.append(" if( $2.equals(\"").append(pn).append("\") ){ return ($w)w.").append(method.getName()).append("(); }");

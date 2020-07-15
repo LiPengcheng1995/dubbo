@@ -87,6 +87,7 @@ public class AdaptiveClassCodeGenerator {
      * generate and return class code
      */
     public String generate() {
+        // interface 的方法必须至少一个有 @Adaptive，应该是适配类需要处理的意思
         // no need to generate adaptive class since there's no adaptive method found.
         if (!hasAdaptiveMethod()) {
             throw new IllegalStateException("No adaptive method exist on extension " + type.getName() + ", refuse to create the adaptive class!");
@@ -99,6 +100,7 @@ public class AdaptiveClassCodeGenerator {
 
         Method[] methods = type.getMethods();
         for (Method method : methods) {
+            // 一一处理方法，生成适配逻辑
             code.append(generateMethod(method));
         }
         code.append("}");
@@ -158,9 +160,9 @@ public class AdaptiveClassCodeGenerator {
     private String generateMethod(Method method) {
         String methodReturnType = method.getReturnType().getCanonicalName();
         String methodName = method.getName();
-        String methodContent = generateMethodContent(method);
-        String methodArgs = generateMethodArguments(method);
-        String methodThrows = generateMethodThrows(method);
+        String methodContent = generateMethodContent(method);//生成方法的适配逻辑
+        String methodArgs = generateMethodArguments(method);// 生成方法的入参声明
+        String methodThrows = generateMethodThrows(method);// 生成方法的已成声明
         return String.format(CODE_METHOD_DECLARATION, methodReturnType, methodName, methodArgs, methodThrows, methodContent);
     }
 
@@ -200,32 +202,44 @@ public class AdaptiveClassCodeGenerator {
     private String generateMethodContent(Method method) {
         Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
         StringBuilder code = new StringBuilder(512);
+        // 方法没有 @Adaptive 注解，直接生成不支持的逻辑
         if (adaptiveAnnotation == null) {
             return generateUnsupported(method);
         } else {
+            // 拿到入参 URL 类型的参数所在下标
             int urlTypeIndex = getUrlTypeIndex(method);
 
             // found parameter in URL type
             if (urlTypeIndex != -1) {
+                // 在参数重拿到 url，直接生成非空判断
                 // Null Point check
                 code.append(generateUrlNullCheck(urlTypeIndex));
             } else {
+                // 没在参数直接拿到，就尝试在参数属性中拿到
                 // did not find parameter in URL type
                 code.append(generateUrlAssignmentIndirectly(method));
             }
 
+            // 拿到 @Adaptive 注解中的值
             String[] value = getMethodAdaptiveValue(adaptiveAnnotation);
 
+            // 判断入参中有没有 Invocation 的参数
             boolean hasInvocation = hasInvocationArgument(method);
 
+            // 如果有 invocation 入参，则不能为空
             code.append(generateInvocationArgumentNullCheck(method));
 
+            // 根据从 @Adaptive 拿到的 key ，从 url 中取出最终的值
             code.append(generateExtNameAssignment(value, hasInvocation));
+
+            // 上面拿出的最终的值不能为空
             // check extName == null?
             code.append(generateExtNameNullCheck(value));
 
+            // 以上面拿出的最终值为名称，加载 interface 类型的 SPI 实现类
             code.append(generateExtensionAssignment());
 
+            // 把参数塞到上面拿到的实现类，将结果吐出去
             // return statement
             code.append(generateReturnAndInvocation(method));
         }
@@ -246,6 +260,9 @@ public class AdaptiveClassCodeGenerator {
     private String generateExtNameAssignment(String[] value, boolean hasInvocation) {
         // TODO: refactor it
         String getNameCode = null;
+        // 这个 for 里套 n 层 if 主要是因为以下原因：
+        // 1. protocol 的 get 和其他 key 不一样
+        // 2. 如果是第一轮循环，要确保 defaultExtName 的默认值能被用上
         for (int i = value.length - 1; i >= 0; --i) {
             if (i == value.length - 1) {
                 if (null != defaultExtName) {
@@ -259,8 +276,9 @@ public class AdaptiveClassCodeGenerator {
                         getNameCode = String.format("( url.getProtocol() == null ? \"%s\" : url.getProtocol() )", defaultExtName);
                     }
                 } else {
+                    // 这里针对属性是否是 protocol 进行了特殊处理，因为 protocol 的获得不是一个套路
                     if (!"protocol".equals(value[i])) {
-                        if (hasInvocation) {
+                        if (hasInvocation) {// TODO 这里有点懵，为什么要专门区分？
                             getNameCode = String.format("url.getMethodParameter(methodName, \"%s\", \"%s\")", value[i], defaultExtName);
                         } else {
                             getNameCode = String.format("url.getParameter(\"%s\")", value[i]);
@@ -296,6 +314,8 @@ public class AdaptiveClassCodeGenerator {
      * generate method invocation statement and return it if necessary
      */
     private String generateReturnAndInvocation(Method method) {
+        // 如果是void，就不用return，执行完就结束了
+        // 如果不是 void ，就return 一下调用的结果
         String returnStatement = method.getReturnType().equals(void.class) ? "" : "return ";
 
         String args = IntStream.range(0, method.getParameters().length)
