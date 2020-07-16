@@ -287,7 +287,7 @@ public abstract class AbstractRegistry implements Registry {
         if (logger.isInfoEnabled()) {
             logger.info("Register: " + url);
         }
-        registered.add(url);
+        registered.add(url); // 这里只是维护了一个增加记录到 url
     }
 
     @Override

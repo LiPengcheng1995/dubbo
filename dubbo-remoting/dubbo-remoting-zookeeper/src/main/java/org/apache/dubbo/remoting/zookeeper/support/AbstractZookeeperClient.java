@@ -70,22 +70,24 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
 
     @Override
     public void create(String path, boolean ephemeral) {
-        if (!ephemeral) {
-            if(persistentExistNodePath.contains(path)){
+        if (!ephemeral) {// 永久的
+            if(persistentExistNodePath.contains(path)){// 本地缓存已经有了，就返回
                 return;
             }
-            if (checkExists(path)) {
-                persistentExistNodePath.add(path);
+            if (checkExists(path)) {// 从 zk 查一下，发现在 zk 中存在
+                persistentExistNodePath.add(path);// 如果存在，本地缓存一下
                 return;
             }
         }
+        // 临时的，或者是永久的，但是在 zk 不存在
         int i = path.lastIndexOf('/');
-        if (i > 0) {
+        if (i > 0) {//先创建其父节点，递归向上创建，一直创建到都有【父级节点都统一创建成静态的】
             create(path.substring(0, i), false);
         }
-        if (ephemeral) {
+
+        if (ephemeral) {// 临时的创建
             createEphemeral(path);
-        } else {
+        } else {// 永久的创建+缓存
             createPersistent(path);
             persistentExistNodePath.add(path);
         }

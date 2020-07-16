@@ -233,6 +233,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             return;
         }
         super.register(url);
+        // 把重试的记录删除，这次就直接尝试注册了，如果失败这次会重新放进去
         removeFailedRegistered(url);
         removeFailedUnregistered(url);
         try {
