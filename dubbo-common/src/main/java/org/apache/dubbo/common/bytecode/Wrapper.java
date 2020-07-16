@@ -159,7 +159,7 @@ public abstract class Wrapper {
         // “定义在当前类中的方法”的名称【因为传进来的有可能是 interface、也有可能是impl】
         List<String> dmns = new ArrayList<>(); // declaring method names.
 
-        // 先处理属性的东西
+        // 先处理公共属性的东西
         // get all public field.
         for (Field f : c.getFields()) {
             String fn = f.getName();
