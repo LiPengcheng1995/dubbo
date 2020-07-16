@@ -256,18 +256,15 @@ public abstract class Wrapper {
         // 里面没有匹配到对应的方法，这里抛异常，没找到
         c3.append(" throw new " + NoSuchMethodException.class.getName() + "(\"Not found method \\\"\"+$2+\"\\\" in class " + c.getName() + ".\"); }");
 
-        // 其实上面循环 method 已经把 getter、setter 用通用逻辑处理掉了，但是这里还是打算在 c1、c2 支持一下
-        // 最开始有疑问，以为最开始从属性入手，已经把 getter、setter 弄完了。
-        // 这里可以考虑有对应的 method 但是和 field 对不上的情况【不是所有的 getter 都有唯一准确对应的 field 】
+        // 其实上面循环 method 已经把 public 属性的 getter、setter 用通用逻辑处理掉了。
+        // 这里在 c1、c2 支持一下非 public 的属性，毕竟从java 的规范来说，非 public 的外界不能直接访问，
+        // 要走 getter/setter 【这些方法内的逻辑也可能有定制，不能忽略】
         // deal with get/set method.
         Matcher matcher;
         for (Map.Entry<String, Method> entry : ms.entrySet()) {// 这里直接遍历上面塞好的 ms ，已经过滤掉 Object 的方法了
             String md = entry.getKey();
             Method method = entry.getValue();
-            // 在 c1、c2 里支持那些 getter、setter 函数【当然，这些不一定有对应的底层 field】
-            // 这里感觉根据 getter、setter 的名字，造方法的同时，也给造了一波属性
-            // TODO 上面的逻辑是直接维护这些属性，也就是直接进行变量的赋值；如果是考虑 getter/setter 的定制逻辑的话，
-            // TODO 就是这里的逻辑，这里会走那些 w 的方法
+            // 非
             if ((matcher = ReflectUtils.GETTER_METHOD_DESC_PATTERN.matcher(md)).matches()) {
                 String pn = propertyName(matcher.group(1));
                 c2.append(" if( $2.equals(\"").append(pn).append("\") ){ return ($w)w.").append(method.getName()).append("(); }");
