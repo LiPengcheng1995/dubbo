@@ -168,6 +168,7 @@ public class DubboBootstrap extends GenericEventListener {
 
     private volatile MetadataServiceExporter metadataServiceExporter;
 
+    // 已经暴露的服务
     private List<ServiceConfigBase<?>> exportedServices = new ArrayList<>();
 
     // 异步暴露服务
@@ -802,9 +803,11 @@ public class DubboBootstrap extends GenericEventListener {
             if (logger.isInfoEnabled()) {
                 logger.info(NAME + " is starting...");
             }
+            // 暴露服务
             // 1. export Dubbo Services
             exportServices();
 
+            // TODO 打断点看一下
             // Not only provider register
             if (!isOnlyRegisterProvider() || hasExportedServices()) {
                 // 2. export MetadataService
@@ -812,8 +815,9 @@ public class DubboBootstrap extends GenericEventListener {
                 //3. Register the local ServiceInstance if required
                 registerServiceInstance();
             }
-
+            // 订阅服务
             referServices();
+            // 如果有异步任务，就开一个线程等待任务完成后设置 ready
             if (asyncExportingFutures.size() > 0) {
                 new Thread(() -> {
                     try {
@@ -1010,14 +1014,15 @@ public class DubboBootstrap extends GenericEventListener {
     private void unexportServices() {
         exportedServices.forEach(sc -> {
             configManager.removeConfig(sc);
-            sc.unexport();
+            sc.unexport(); // 不再暴露服务
         });
 
         asyncExportingFutures.forEach(future -> {
             if (!future.isDone()) {
-                future.cancel(true);
+                future.cancel(true);// 异步暴露的服务，如果有没完成的，就取消
             }
         });
+        // 清理暴露服务的调用存储
         asyncExportingFutures.clear();
         exportedServices.clear();
     }
@@ -1123,23 +1128,27 @@ public class DubboBootstrap extends GenericEventListener {
     public void destroy() {
         if (destroyLock.tryLock()) {
             try {
+                // TODO 感觉不太对，这里已经有 destroyed.compareAndSet() 了
+                // 清理对注册中心的服务注册、订阅
+                // 清理本地的服务的提供、订阅
                 DubboShutdownHook.destroyAll();
 
                 if (started.compareAndSet(true, false)
                         && destroyed.compareAndSet(false, true)) {
+                    // 上面没关住，而且这里关上了
 
-                    unregisterServiceInstance();
+                    unregisterServiceInstance();//把注册收回来
                     unexportMetadataService();
-                    unexportServices();
-                    unreferServices();
+                    unexportServices();// 提供的服务收回来
+                    unreferServices();// 依赖的服务收回来
 
-                    destroyRegistries();
-                    DubboShutdownHook.destroyProtocols();
-                    destroyServiceDiscoveries();
+                    destroyRegistries();// 注册中心的对象关掉
+                    DubboShutdownHook.destroyProtocols();// 本地服务关掉
+                    destroyServiceDiscoveries();// 记录本地提供、依赖服务的注册中心也销毁掉
 
-                    clear();
-                    shutdown();
-                    release();
+                    clear();// 清理配置
+                    shutdown();// 关闭 BootStrap 的单线程池【这个线程池感觉没提过东西，是用来避免退出的？】
+                    release();// 把 BootStrap 阻塞的东西放开
                 }
             } finally {
                 destroyLock.unlock();

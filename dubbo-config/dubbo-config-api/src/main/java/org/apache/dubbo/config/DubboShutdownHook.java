@@ -142,7 +142,7 @@ public class DubboShutdownHook extends Thread {
         for (String protocolName : loader.getLoadedExtensions()) {
             try {
                 Protocol protocol = loader.getLoadedExtension(protocolName);
-                if (protocol != null) {
+                if (protocol != null) {// 关闭所有的通信【不再提供本地暴露服务、可能也有订阅，还没看到这里】
                     protocol.destroy();
                 }
             } catch (Throwable t) {

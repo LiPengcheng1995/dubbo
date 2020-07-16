@@ -73,7 +73,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
      * Close all created registries
      */
     public static void destroyAll() {
-        if (!destroyed.compareAndSet(false, true)) {
+        if (!destroyed.compareAndSet(false, true)) {// 设置服务
             return;
         }
 
@@ -85,7 +85,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
         try {
             for (Registry registry : getRegistries()) {
                 try {
-                    registry.destroy();
+                    registry.destroy();// 关闭注册，注册中心会通知订阅方切掉请求
                 } catch (Throwable e) {
                     LOGGER.error(e.getMessage(), e);
                 }

@@ -61,7 +61,9 @@ public class DubboLifecycleComponentApplicationListener extends OneTimeExecution
     }
 
     protected void onContextRefreshedEvent(ContextRefreshedEvent event) {
+        // 从 Spring 上下文拿到所有实现了 dubbo Lifecycle.class 的 bean
         initLifecycleComponents(event);
+        // 调用他们的 start 勾子
         startLifecycleComponents();
     }
 
@@ -73,6 +75,7 @@ public class DubboLifecycleComponentApplicationListener extends OneTimeExecution
         ApplicationContext context = event.getApplicationContext();
         ClassLoader classLoader = context.getClassLoader();
         lifecycleComponents = new LinkedList<>();
+        // 从上下文中拿出实现 Lifecycle.class 的 bean【这是 dubbo 的接口】
         // load the Beans of Lifecycle from ApplicationContext
         loadLifecycleComponents(lifecycleComponents, context);
     }

@@ -30,7 +30,9 @@ import org.springframework.core.Ordered;
  *
  * @since 2.7.5
  */
-// 这个应该是关注开始结束时的事件
+// 这个应该是关注开始结束时的事件，负责：
+// 1. 收到服务启动事件时，启动 DubboBootStrap ，进行服务的暴露、注册、订阅、依赖等等
+// 2. 收到服务停止事件时，关闭 服务的东西，清理 dubbo 的数据结构
 public class DubboBootstrapApplicationListener extends OneTimeExecutionApplicationContextEventListener
         implements Ordered {
 

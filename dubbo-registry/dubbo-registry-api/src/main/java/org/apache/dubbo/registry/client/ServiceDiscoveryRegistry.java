@@ -123,6 +123,7 @@ import static org.apache.dubbo.registry.client.metadata.ServiceInstanceMetadataU
  * @see WritableMetadataService
  * @since 2.7.5
  */
+// 一个存储注册、订阅的注册中心功能，效率比 MetadataService 高一些
 public class ServiceDiscoveryRegistry extends FailbackRegistry {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
