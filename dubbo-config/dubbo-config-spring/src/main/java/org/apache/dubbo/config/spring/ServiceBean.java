@@ -37,6 +37,7 @@ import org.springframework.context.ApplicationEventPublisherAware;
  *
  * @export
  */
+// 具体的服务提供配置
 public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean,
         ApplicationContextAware, BeanNameAware, ApplicationEventPublisherAware {
 

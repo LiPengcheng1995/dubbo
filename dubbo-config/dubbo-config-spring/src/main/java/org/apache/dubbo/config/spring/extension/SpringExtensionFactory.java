@@ -36,8 +36,14 @@ public class SpringExtensionFactory implements ExtensionFactory {
 
     private static final Set<ApplicationContext> CONTEXTS = new ConcurrentHashSet<ApplicationContext>();
 
-    // TODO 此处存疑，这里需要外界手动塞进来 Spring 上下文。
-    // TODO 是否会导致配置项中写死对 SpringExtensionFactory 这个类的依赖
+    // 这里需要外界手动塞进来 Spring 上下文。
+    //
+    // 经过查询，发现在 dubbo 和 Spring 结合的 ServiceBean、ReferenceBean 都实现了 ApplicationContextAware，
+    // 并在 setApplicationContext() 方法中直接通过 SpringExtensionFactory.addApplicationContext(applicationContext)
+    // 直接塞进了 Spring 的上下文。
+    //
+    // 至于 ServiceBean、ReferenceBean 中和 SpringExtensionFactory 实现类强耦合的问题，本身这个包就是在适配 Spring 的包中，
+    // 这个实现类也是在此包的 dubbo.internal 手动配置进来的。完全没有问题
     public static void addApplicationContext(ApplicationContext context) {
         CONTEXTS.add(context);
         if (context instanceof ConfigurableApplicationContext) {

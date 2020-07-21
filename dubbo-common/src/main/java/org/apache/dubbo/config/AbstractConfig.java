@@ -577,6 +577,9 @@ public abstract class AbstractConfig implements Serializable {
      * @see ConfigManager#addConfig(AbstractConfig)
      * @since 2.7.5
      */
+    // TODO 这个方法比较重要，用来把 dubbo 的上下文贯穿起来
+    // 此方法将本配置加入到 ConfigManager 中进行统一存储, Spring 和 Java EE 会直接支持此注解的逻辑
+    // Spring 的后处理器 CommonAnnotationBeanPostProcessor  支持 @Resource 时也支持了这个，和一些其他的 javax 注解
     @PostConstruct
     public void addIntoConfigManager() {
         ApplicationModel.getConfigManager().addConfig(this);
