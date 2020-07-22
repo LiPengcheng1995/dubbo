@@ -173,20 +173,28 @@ public class ConfigValidationUtils {
         List<RegistryConfig> registries = interfaceConfig.getRegistries();//拿到配置好的这个服务的注册中心
         if (CollectionUtils.isNotEmpty(registries)) {
             for (RegistryConfig config : registries) {
+                // 完善配置的注册中心的地址信息
                 String address = config.getAddress();
                 if (StringUtils.isEmpty(address)) {
                     address = ANYHOST_VALUE;
                 }
                 if (!RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
+                    // 这里的 map 是一个类似默认值的东西，最全的变量在这里塞一份，后面从 address
+                    // 反解出 URL 时，缺少的变量从这里拿
                     Map<String, String> map = new HashMap<String, String>();
+                    // 把 application 的变量都塞一遍
                     AbstractConfig.appendParameters(map, application);
+                    // 把本注册中心配置的变量也塞一遍
                     AbstractConfig.appendParameters(map, config);
                     map.put(PATH_KEY, RegistryService.class.getName());
+                    // TODO 把运行时的东西也塞进去（这里包括了 duboo 版本和进程id）
                     AbstractInterfaceConfig.appendRuntimeParameters(map);
+                    // registry 的 protocol 设置一下
                     if (!map.containsKey(PROTOCOL_KEY)) {
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
-                    // address 支持通过分隔符配置多个地址，这里将他们拆开
+                    // address 支持通过分隔符配置多个地址，这里将他们拆开，
+                    // 把 map 的参数当默认值补充到每个解析出的 url 中
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
@@ -195,6 +203,9 @@ public class ConfigValidationUtils {
                                 .addParameter(REGISTRY_KEY, url.getProtocol())
                                 .setProtocol(extractRegistryType(url))
                                 .build();
+                        // 如果是生产者且将 register 配置成 true 【或者没有配置，默认是 true】
+                        // .....消费者.....subscribe...................................
+                        // 其实就是是否进行注册的意思
                         if ((provider && url.getParameter(REGISTER_KEY, true))
                                 || (!provider && url.getParameter(SUBSCRIBE_KEY, true))) {
                             registryList.add(url);

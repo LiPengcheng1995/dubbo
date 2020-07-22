@@ -181,6 +181,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         dispatch(new ServiceConfigUnexportedEvent(this));
     }
 
+    // 一个 ServiceConfig 对应这一个服务，进行同一服务导出时需要加锁
     public synchronized void export() {
         if (!shouldExport()) {
             return;
@@ -224,8 +225,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         // 先用前面整好的全局配置配一遍，从 application、 provider 那些地方找配置塞进来
         // Use default configs defined explicitly with global scope
         completeCompoundConfigs();
-        // 判断 provider 如果为空，根据 application 自行生成一个
-        // TODO 此处逻辑不合理，应该抽离出去统一做，毕竟 provider 也是一个通用的
+        // TODO 为什么不把这个提前，毕竟 completeCompoundConfigs() 也有用 privider、protocol
+        // 判断此 service 的 provider ，如果为空，就从在上下文注册的 provider 中拿到默认的塞进来
         checkDefault();
         // 让 provider 的 protocol 优先生效【。。。。思路真鸡儿乱】
         checkProtocol();
@@ -237,7 +238,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
         // if protocol is not injvm checkRegistry
         if (!isOnlyInJvm()) {// 如果不只是提供内部调用，还支持外部调用，就需要捋一下注册中心
-            // 之前的配置中心都是从全局配置的，这里以本 ServiceConfig 为最优先做了一下配置，这里需要重新捋一下注册中心
+            // 这个和之前的 checkProtocol() 一样的套路，
             checkRegistry();
         }
         // 统一进行一下 ServiceConfig 中的变量替换
@@ -343,6 +344,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)// path 之前用 interface 兜底了
                     .orElse(path), group, version);
+            // 这里再次拿 pathKey 当 key ，注册一遍
+            // 注意，上面的注册只是拿 interface 的 name 注册的， 这里加上了 group 和 vrsion
             // In case user specified path, register service one more time to map it to path.
             repository.registerService(pathKey, interfaceClass);
             // TODO, uncomment this line once service key is unified
@@ -456,8 +459,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 map.put(REVISION_KEY, revision);
             }
 
-            // 把 interface 的方法信息塞进去
             String[] methods = Wrapper.getWrapper(interfaceClass).getMethodNames();
+            // 把 interface 的方法信息塞进去
             if (methods.length == 0) {
                 logger.warn("No method found in service interface " + interfaceClass.getName());
                 map.put(METHODS_KEY, ANY_VALUE);

@@ -202,9 +202,11 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     }
 
     public void checkProtocol() {
+        // 把 provider 的 protocol 实例塞进来
         if (CollectionUtils.isEmpty(protocols) && provider != null) {
             setProtocols(provider.getProtocols());
         }
+        //
         convertProtocolIdsToProtocols();
     }
 
@@ -227,10 +229,16 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     }
 
     private void convertProtocolIdsToProtocols() {
+        // 把 provider 的 protocolIds 塞进来
         computeValidProtocolIds();
         if (StringUtils.isEmpty(protocolIds)) {
             if (CollectionUtils.isEmpty(protocols)) {
+                // 从 provider 拿到的 protocol 和 protocolid 都不能满足需要，
+                // 尝试从上下文拿到配置的 protocol
                 List<ProtocolConfig> protocolConfigs = ApplicationModel.getConfigManager().getDefaultProtocols();
+
+                // 哪里都拿不到的话，这里就自己创建一个默认的 protocol 塞进配置中心
+                // 【默认配置中心刷新时，会从环境中拿变量进行补充，保不准能跑起来】
                 if (protocolConfigs.isEmpty()) {
                     protocolConfigs = new ArrayList<>(1);
                     ProtocolConfig protocolConfig = new ProtocolConfig();

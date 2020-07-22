@@ -38,6 +38,9 @@ import static org.apache.dubbo.common.constants.CommonConstants.INVOKER_LISTENER
 /**
  * ListenerProtocol
  */
+// 这一层封装感觉是对 ListenerExporterWrapper/ListenerInvokerWrapper 的封装，即：
+// 如果有 invoker 的 URL 对应的 ExporterListener/InvokerListener ,就加载并调用其对应的勾子
+// TODO 这里感觉就是增加了对两个事件监听的支持
 public class ProtocolListenerWrapper implements Protocol {
 
     private final Protocol protocol;

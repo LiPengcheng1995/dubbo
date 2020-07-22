@@ -656,6 +656,7 @@ public class ExtensionLoader<T> {
             }
             // 进行依赖注入
             injectExtension(instance);
+            // 注意啦！ 这里表明，吐出去的实现类不一定是你 type 指定的类型，如果有 Wrapper 实现，大概率是 Wrapper 实现包装过的
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {

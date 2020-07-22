@@ -197,6 +197,7 @@ public class RegistryProtocol implements Protocol {
         // url to export locally
         URL providerUrl = getProviderUrl(originInvoker);
 
+        // 这里根据服务提供者的 url 生成一个新的 url 用来通知覆盖信息的
         // TODO 这里注意，同一个应用同时是一个服务的生产者和消费者，会覆盖信息
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
@@ -424,7 +425,7 @@ public class RegistryProtocol implements Protocol {
      * @param originInvoker
      * @return
      */
-    // 从之前塞好的 export ，拿出要在本地暴露服务的 url
+    // 从之前塞好的 export 属性拿出要在本地暴露服务的 url
     private URL getProviderUrl(final Invoker<?> originInvoker) {
         String export = originInvoker.getUrl().getParameterAndDecoded(EXPORT_KEY);
         if (export == null || export.length() == 0) {

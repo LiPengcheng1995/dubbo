@@ -181,6 +181,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         // 尝试从上层配置中拿到 registryId 的配置
         convertRegistryIdsToRegistries();
 
+        // 此处保证 registry 必须有效，有问题就抛异常终止服务
         for (RegistryConfig registryConfig : registries) {
             if (!registryConfig.isValid()) {
                 throw new IllegalStateException("No registry config found or it's not a valid config! " +
@@ -278,7 +279,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         if (StringUtils.isEmpty(registryIds)) {
             // 没兜住，保证 registries 有值
             if (CollectionUtils.isEmpty(registries)) {
+                // 从上下文拿到配置，此处和 protocol 的策略差不多
                 List<RegistryConfig> registryConfigs = ApplicationModel.getConfigManager().getDefaultRegistries();
+                // 都不行就自己 new ，然后从环境变量中补充值
                 if (registryConfigs.isEmpty()) {
                     registryConfigs = new ArrayList<>();
                     RegistryConfig registryConfig = new RegistryConfig();

@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentMap;
 import static org.apache.dubbo.common.BaseServiceMetadata.interfaceFromServiceKey;
 import static org.apache.dubbo.common.BaseServiceMetadata.versionFromServiceKey;
 
+// 这个给我的感觉，是专门管理服务注册的。
 public class ServiceRepository extends LifecycleAdapter implements FrameworkExt {
 
     public static final String NAME = "repository";
@@ -52,6 +53,7 @@ public class ServiceRepository extends LifecycleAdapter implements FrameworkExt 
     private ConcurrentMap<String, ProviderModel> providersWithoutGroup = new ConcurrentHashMap<>();
 
     public ServiceRepository() {
+        // TODO 在初始化时，先将必须的服务注册进来
         Set<BuiltinServiceDetector> builtinServices
                 = ExtensionLoader.getExtensionLoader(BuiltinServiceDetector.class).getSupportedExtensionInstances();
         if (CollectionUtils.isNotEmpty(builtinServices)) {
