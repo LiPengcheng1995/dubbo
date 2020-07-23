@@ -40,6 +40,8 @@ import org.apache.dubbo.common.extension.SPI;
  * @see org.apache.dubbo.rpc.filter.TokenFilter
  * @see org.apache.dubbo.rpc.filter.TpsLimitFilter
  */
+// 拦截器是对暴露服务的增强，增加拦截器的时候要注意调用成本，性能开销不能太高
+// 实现对 Filter 支持的类为 ProtocolFilterWrapper
 @SPI
 public interface Filter {
     /**

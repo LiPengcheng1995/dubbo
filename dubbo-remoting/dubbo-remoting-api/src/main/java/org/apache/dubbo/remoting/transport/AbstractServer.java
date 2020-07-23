@@ -86,7 +86,7 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
 
     protected abstract void doClose() throws Throwable;
 
-    // 创建服务后，允许向已经创建的服务中添加新的封装实现
+    // 创建服务后，允许进行服务参数的覆盖
     @Override
     public void reset(URL url) {
         if (url == null) {//无效入参，不处理
@@ -113,7 +113,8 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
             logger.error(t.getMessage(), t);
         }
         executorRepository.updateThreadpool(url, executor);// 根据 url 的线程池配置，更新线程池
-        super.setUrl(getUrl().addParameters(url.getParameters()));// TODO 这是强行把参数覆盖了一遍？？？？
+        // 设置一下url，注意啦， Server 不会用所有的 url 参数，所以这里做的 reset 都是覆盖的 server 策略，不会覆盖导出的服务
+        super.setUrl(getUrl().addParameters(url.getParameters()));
     }
 
     @Override

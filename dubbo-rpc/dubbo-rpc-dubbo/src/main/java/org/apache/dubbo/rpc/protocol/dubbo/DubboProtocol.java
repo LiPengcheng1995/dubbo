@@ -299,6 +299,9 @@ public class DubboProtocol extends AbstractProtocol {
 
         // export service.
         String key = serviceKey(url);
+        // TODO 这里才是服务的导出，你看一下 requestHandler 就知道，他在收到请求处理时
+        // TODO 都是直接从 exporterMap 拿实现类搞定的
+        // 这里带入了 exporterMap ，其中记录了所有暴露的 dubbo exporter
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
 
@@ -316,7 +319,7 @@ public class DubboProtocol extends AbstractProtocol {
 
             }
         }
-
+        // 这里只是根据 url 中的一些服务相关的参数，进行服务端的启动/刷新
         openServer(url);
         // 一些序列化和反序列化的支持
         optimizeSerialization(url);
@@ -340,8 +343,7 @@ public class DubboProtocol extends AbstractProtocol {
                     }
                 }
             } else {
-                // TODO server 已经存在，即对应的端口已经有服务了，就进行服务的覆盖！！！！！
-                // TODO 根据上层使用，每个 interface 的暴露都会专门先找个可用的端口，不会在同一个端口暴露两个服务
+                // server 已经存在，即对应的端口已经有服务了，这里就按照新 url 的服务端参数做一下覆盖
                 // server supports reset, use together with override
                 server.reset(url);
             }

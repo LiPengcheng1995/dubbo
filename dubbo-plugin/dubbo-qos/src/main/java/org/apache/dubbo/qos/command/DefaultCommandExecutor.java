@@ -23,6 +23,7 @@ public class DefaultCommandExecutor implements CommandExecutor {
     public String execute(CommandContext commandContext) throws NoSuchCommandException {
         BaseCommand command = null;
         try {
+            // TODO 这个思路非常好！！！！感觉这里是用 spi 的东西用的最舒服的地方了
             command = ExtensionLoader.getExtensionLoader(BaseCommand.class).getExtension(commandContext.getCommandName());
         } catch (Throwable throwable) {
                 //can't find command

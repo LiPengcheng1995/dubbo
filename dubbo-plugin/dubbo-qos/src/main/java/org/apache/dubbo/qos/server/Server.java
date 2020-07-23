@@ -85,6 +85,7 @@ public class Server {
         if (!started.compareAndSet(false, true)) {
             return;
         }
+        // 通用配置
         boss = new NioEventLoopGroup(1, new DefaultThreadFactory("qos-boss", true));
         worker = new NioEventLoopGroup(0, new DefaultThreadFactory("qos-worker", true));
         ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -92,6 +93,7 @@ public class Server {
         serverBootstrap.channel(NioServerSocketChannel.class);
         serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
         serverBootstrap.childOption(ChannelOption.TCP_NODELAY, true);
+        // 这里，将 netty 收到请求后的处理委托给 QosProcessHandler
         serverBootstrap.childHandler(new ChannelInitializer<Channel>() {
 
             @Override

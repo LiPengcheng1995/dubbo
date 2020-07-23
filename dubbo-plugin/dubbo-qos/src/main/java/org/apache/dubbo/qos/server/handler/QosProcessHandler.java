@@ -50,6 +50,7 @@ public class QosProcessHandler extends ByteToMessageDecoder {
         this.acceptForeignIp = acceptForeignIp;
     }
 
+    // 这是连接成功了，回写一个 dubbo 的标志，作为欢迎标记
     @Override
     public void channelActive(final ChannelHandlerContext ctx) throws Exception {
         welcomeFuture = ctx.executor().schedule(new Runnable() {
@@ -65,6 +66,13 @@ public class QosProcessHandler extends ByteToMessageDecoder {
         }, 500, TimeUnit.MILLISECONDS);
     }
 
+    // 这里是针对 ctx 的解码操作，但是这里不只是解码，这里：
+    // 1. 根据入参的魔数，判断交互的协议，然后动态向 ctx 的 pipeline 管道中添加处理器
+    // 2. 将本 handler 从 ctx 上下文拿掉，避免死循环
+    // TODO 这里主要是对 netty 的 api 不熟悉，根据功能和代码推测如下：
+    // TODO 1. ChannelHandlerContext 是 request 纬度的或者 session 纬度的
+    // TODO 2. ChannelHandlerContext 里面带着 pipeline 用于标记处理管道，且是可以动态调整的
+    // TODO todo ，以上项，在看 netty api 时关注、验证一下
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         if (in.readableBytes() < 1) {
@@ -90,8 +98,8 @@ public class QosProcessHandler extends ByteToMessageDecoder {
             p.addLast(new StringDecoder(CharsetUtil.UTF_8));
             p.addLast(new StringEncoder(CharsetUtil.UTF_8));
             p.addLast(new IdleStateHandler(0, 0, 5 * 60));
-            p.addLast(new TelnetProcessHandler());
-            p.remove(this);
+            p.addLast(new TelnetProcessHandler());// 拿到命令执行
+            p.remove(this);// 已经完成动态调整和分发，可以把本 handler 拿掉了
         }
     }
 

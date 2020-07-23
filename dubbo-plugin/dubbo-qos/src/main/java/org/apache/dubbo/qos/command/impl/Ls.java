@@ -43,7 +43,7 @@ public class Ls implements BaseCommand {
     public String listProvider() {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("As Provider side:" + System.lineSeparator());
-        Collection<ProviderModel> providerModelList = ApplicationModel.allProviderModels();
+        Collection<ProviderModel> providerModelList = ApplicationModel.allProviderModels();// 从 ServiceRepository 拿数据，这个在导出服务时进行了存档
 
         TTable tTable = new TTable(new TTable.ColumnDefine[]{
                 new TTable.ColumnDefine(TTable.Align.MIDDLE),

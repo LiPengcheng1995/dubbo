@@ -36,7 +36,11 @@ import static org.apache.dubbo.common.constants.QosConstants.QOS_ENABLE;
 import static org.apache.dubbo.common.constants.QosConstants.QOS_HOST;
 import static org.apache.dubbo.common.constants.QosConstants.QOS_PORT;
 
-
+// 这个 Protocol 的封装是针对 Registry 的 Protocol 的增强
+//
+// QOS 全称 Quality of Service ，为了提升服务质量增加的功能支持，我的理解，就是监听一个端口，接收外面
+// 来的 http/telnet 消息，进行服务的上下线动态调整。（有点像jsf控制台的操作）
+// http://dubbo.apache.org/zh-cn/blog/introduction-to-dubbo-qos.html
 public class QosProtocolWrapper implements Protocol {
 
     private final Logger logger = LoggerFactory.getLogger(QosProtocolWrapper.class);
@@ -60,6 +64,9 @@ public class QosProtocolWrapper implements Protocol {
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         if (UrlUtils.isRegistry(invoker.getUrl())) {
+            // registry 的 url 才增强
+            //
+            // 因为动态调整只涉及对注册中心的上下线，所以如果没有注册中心用直连的话，这里就没必要启动了
             startQosServer(invoker.getUrl());
             return protocol.export(invoker);
         }
@@ -88,6 +95,7 @@ public class QosProtocolWrapper implements Protocol {
 
     private void startQosServer(URL url) {
         try {
+            // 如果这个服务已经启动，就不用操作
             if (!hasStarted.compareAndSet(false, true)) {
                 return;
             }
@@ -100,6 +108,7 @@ public class QosProtocolWrapper implements Protocol {
                 return;
             }
 
+            // 参数同步到 QOS 的 server 中，然后启动一个 netty 的 server
             String host = url.getParameter(QOS_HOST);
             int port = url.getParameter(QOS_PORT, QosConstants.DEFAULT_PORT);
             boolean acceptForeignIp = Boolean.parseBoolean(url.getParameter(ACCEPT_FOREIGN_IP, "false"));
