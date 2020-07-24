@@ -160,6 +160,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     }
                 });
                 zkClient.create(root, false);
+                // 好像生产者不用注册监听，一般是消费者注册监听，方便根据生产者在线情况修改策略
                 List<String> services = zkClient.addChildListener(root, zkListener);
                 if (CollectionUtils.isNotEmpty(services)) {
                     for (String service : services) {
