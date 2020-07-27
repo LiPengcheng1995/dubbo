@@ -100,9 +100,13 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
     @SuppressWarnings({"unchecked"})
     public void afterPropertiesSet() throws Exception {
 
+        // 初始化前确保所有前置 bean 已经进行初始化
         // Initializes Dubbo's Config Beans before @Reference bean autowiring
         prepareDubboConfigBeans();
 
+        // 这里和下面的 shouldInit() 是拧着的，当然，看结果的话就是：
+        // 如果没有配置，默认采用延迟加载【 bean 注入时加载】
+        // 如果有配置 true ，就立刻加载
         // lazy init by default.
         if (init == null) {
             init = false;

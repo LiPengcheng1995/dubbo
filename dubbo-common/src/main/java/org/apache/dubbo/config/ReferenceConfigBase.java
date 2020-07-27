@@ -223,9 +223,11 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
     }
 
     public void resolveFile() {
+        // 根据 interfaceName 直接从环境拿此接口的配置
         String resolve = System.getProperty(interfaceName);
         String resolveFile = null;
         if (StringUtils.isEmpty(resolve)) {
+            // 从环境拿到配置文件地址，从配置问价加载
             resolveFile = System.getProperty("dubbo.resolve.file");
             if (StringUtils.isEmpty(resolveFile)) {
                 File userResolveFile = new File(new File(System.getProperty("user.home")), "dubbo-resolve.properties");
@@ -244,9 +246,10 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
                 resolve = properties.getProperty(interfaceName);
             }
         }
+        // 拿到了此接口的配置
         if (resolve != null && resolve.length() > 0) {
-            url = resolve;
-            if (logger.isWarnEnabled()) {
+            url = resolve;// 使用环境配置的url进行覆盖
+            if (logger.isWarnEnabled()) {// 我tmd。。。。。就不能用大 if把日志分隔开么，可读性不太高呀
                 if (resolveFile != null) {
                     logger.warn("Using default dubbo resolve file " + resolveFile + " replace " + interfaceName + "" + resolve + " to p2p invoke remote service.");
                 } else {

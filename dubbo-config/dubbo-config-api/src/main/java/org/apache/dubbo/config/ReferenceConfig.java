@@ -198,6 +198,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         Map<String, String> map = new HashMap<String, String>();
         map.put(SIDE_KEY, CONSUMER_SIDE);
 
+        // 补充运行时的信息，包括版本号、pid之类的
         ReferenceConfigBase.appendRuntimeParameters(map);
         if (!ProtocolUtils.isGeneric(generic)) {
             String revision = Version.getVersion(interfaceClass, version);
@@ -205,6 +206,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 map.put(REVISION_KEY, revision);
             }
 
+            // 拿到 interfaceClass 的方法名，并塞到 map 中
             String[] methods = Wrapper.getWrapper(interfaceClass).getMethodNames();
             if (methods.length == 0) {
                 logger.warn("No method found in service interface " + interfaceClass.getName());
@@ -214,6 +216,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
         }
         map.put(INTERFACE_KEY, interfaceName);
+        // 把这些配置的参数都塞进去
         AbstractConfig.appendParameters(map, getMetrics());
         AbstractConfig.appendParameters(map, getApplication());
         AbstractConfig.appendParameters(map, getModule());
@@ -226,6 +229,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             map.putIfAbsent(METADATA_KEY, REMOTE_METADATA_STORAGE_TYPE);
         }
         Map<String, AsyncMethodInfo> attributes = null;
+        // 有针对方法级别的特殊配置
         if (CollectionUtils.isNotEmpty(getMethods())) {
             attributes = new HashMap<>();
             for (MethodConfig methodConfig : getMethods()) {
@@ -374,16 +378,19 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         if (StringUtils.isEmpty(interfaceName)) {
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         }
+        // reference 缺失的配置，从 consumer 配置中填充一下
         completeCompoundConfigs(consumer);
         if (consumer != null) {
             if (StringUtils.isEmpty(registryIds)) {
                 setRegistryIds(consumer.getRegistryIds());
             }
         }
+        // consumer 必须不为空，如果为空的话，就走默认的，
+        // 如果没有配置默认的，就自己 new ，然后从系统环境中拿变量填
         // get consumer's global configuration
         checkDefault();
-        this.refresh();
-        if (getGeneric() == null && getConsumer() != null) {
+        this.refresh();// 将启动的参数都刷一遍，进行变量引用的替换
+        if (getGeneric() == null && getConsumer() != null) {// generic 配置兜底操作
             setGeneric(getConsumer().getGeneric());
         }
         if (ProtocolUtils.isGeneric(generic)) {
@@ -395,9 +402,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            // 完善 method 的配置，并进行基本的校验
             checkInterfaceAndMethods(interfaceClass, getMethods());
         }
 
+        // 设置元数据
         //init serivceMetadata
         serviceMetadata.setVersion(getVersion());
         serviceMetadata.setGroup(getGroup());
@@ -407,8 +416,12 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         // TODO, uncomment this line once service key is unified
         serviceMetadata.setServiceKey(URL.buildKey(interfaceName, group, version));
 
+        // 拿到注册好的服务，注意，前面在进行初始化前，通过 prepareDubboConfigBeans() 保证了所有前置的注册中心、
+        // 应用啥的都初始化好了，所以这里拿到的服务就是最全的
         ServiceRepository repository = ApplicationModel.getServiceRepository();
+        // 注册服务
         ServiceDescriptor serviceDescriptor = repository.registerService(interfaceClass);
+        // 注册服务消费
         repository.registerConsumer(
                 serviceMetadata.getServiceKey(),
                 serviceDescriptor,
@@ -416,8 +429,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 null,
                 serviceMetadata);
 
+        // 从临时配置覆盖消费订阅参数
         resolveFile();
-        ConfigValidationUtils.validateReferenceConfig(this);
+        ConfigValidationUtils.validateReferenceConfig(this);// 校验参数配置是否合理。。。先放过
+        // 拿到所有的后处理器，都调用后处理器加工一下本配置
+        // TODO 这里没看到有直接的实现类，应该是让第三方框架自己扩展的 SPI
         postProcessConfig();
     }
 
