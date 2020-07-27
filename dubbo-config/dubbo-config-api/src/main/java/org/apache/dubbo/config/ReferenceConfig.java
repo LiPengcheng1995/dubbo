@@ -269,6 +269,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
         initialized = true;
 
+        // 在 Spring 上下文发布一个服务订阅的事件
         // dispatch a ReferenceConfigInitializedEvent since 2.7.4
         dispatch(new ReferenceConfigInitializedEvent(this, invoker));
     }
@@ -340,8 +341,11 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                     // for multi-subscription scenario, use 'zone-aware' policy by default
                     URL u = registryURL.addParameterIfAbsent(CLUSTER_KEY, ZoneAwareCluster.NAME);
                     // The invoker wrap relation would be like: ZoneAwareClusterInvoker(StaticDirectory) -> FailoverClusterInvoker(RegistryDirectory, routing happens here) -> Invoker
+                    // Directory 拿到的是符合要求的 invoker 列表， Cluster 负责将列表封装成一个可用的虚拟的 invoker，包括了容错的处理
                     invoker = CLUSTER.join(new StaticDirectory(u, invokers));
-                } else { // not a registry url, must be direct invoke.
+                } else {
+                    // TODO  此处需要校验是否是直接调用
+                    // not a registry url, must be direct invoke.
                     invoker = CLUSTER.join(new StaticDirectory(invokers));
                 }
             }
@@ -368,11 +372,13 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
          * ServiceData Store
          */
         String metadata = map.get(METADATA_KEY);
+        //发布 consumer 信息
         WritableMetadataService metadataService = WritableMetadataService.getExtension(metadata == null ? DEFAULT_METADATA_STORAGE_TYPE : metadata);
         if (metadataService != null) {
             URL consumerURL = new URL(CONSUMER_PROTOCOL, map.remove(REGISTER_IP_KEY), 0, map.get(INTERFACE_KEY), map);
             metadataService.publishServiceDefinition(consumerURL);
         }
+        // 为 invoker 生成和配置的 interface 能匹配的代理
         // create service proxy
         return (T) PROXY_FACTORY.getProxy(invoker, ProtocolUtils.isGeneric(generic));
     }

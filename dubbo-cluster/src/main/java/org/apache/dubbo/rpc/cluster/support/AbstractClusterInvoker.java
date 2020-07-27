@@ -167,6 +167,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
+        // 从 loadbalance 拿到一个 invoker
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
@@ -212,21 +213,23 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         List<Invoker<T>> reselectInvokers = new ArrayList<>(
                 invokers.size() > 1 ? (invokers.size() - 1) : invokers.size());
 
+        // 将可用的，却没有被选中的invoker组成一个新的列表
         // First, try picking a invoker not in `selected`.
         for (Invoker<T> invoker : invokers) {
             if (availablecheck && !invoker.isAvailable()) {
                 continue;
             }
-
             if (selected == null || !selected.contains(invoker)) {
                 reselectInvokers.add(invoker);
             }
         }
 
+        // 将组装好的列表从新走 loadbalance 的选择逻辑
         if (!reselectInvokers.isEmpty()) {
             return loadbalance.select(reselectInvokers, getUrl(), invocation);
         }
 
+        // 选出来的 invoker 可用，但是不在 reselectInvokers 中，为了保证公平，重新选
         // Just pick an available invoker using loadbalance policy
         if (selected != null) {
             for (Invoker<T> invoker : selected) {

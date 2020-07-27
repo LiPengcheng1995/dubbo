@@ -36,9 +36,12 @@ public abstract class AbstractCluster implements Cluster {
 
     private <T> Invoker<T> buildClusterInterceptors(AbstractClusterInvoker<T> clusterInvoker, String key) {
         AbstractClusterInvoker<T> last = clusterInvoker;
+        // 拿到 invoker 对应的 ClusterInterceptor 实现类
+        // TODO 此处打断点看一下
         List<ClusterInterceptor> interceptors = ExtensionLoader.getExtensionLoader(ClusterInterceptor.class).getActivateExtension(clusterInvoker.getUrl(), key);
 
         if (!interceptors.isEmpty()) {
+            // 和服务倒出一样，不停 new 新的 invoker 进行 ClusterInterceptor 的封装
             for (int i = interceptors.size() - 1; i >= 0; i--) {
                 final ClusterInterceptor interceptor = interceptors.get(i);
                 final AbstractClusterInvoker<T> next = last;
@@ -50,6 +53,8 @@ public abstract class AbstractCluster implements Cluster {
 
     @Override
     public <T> Invoker<T> join(Directory<T> directory) throws RpcException {
+        // doJoin(directory) ，根据本类的子类实现策略，将 directory 的 invokers 封装成一个 invoker，这个 invoker 有对应的容错机制
+        //
         return buildClusterInterceptors(doJoin(directory), directory.getUrl().getParameter(REFERENCE_INTERCEPTOR_KEY));
     }
 

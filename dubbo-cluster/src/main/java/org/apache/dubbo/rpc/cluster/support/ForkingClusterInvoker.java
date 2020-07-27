@@ -46,6 +46,7 @@ import static org.apache.dubbo.rpc.cluster.Constants.DEFAULT_FORKS;
  *
  * <a href="http://en.wikipedia.org/wiki/Fork_(topology)">Fork</a>
  */
+// 并发调用多个，取最先正确返回的，适合实时性高的接口，但是更浪费资源
 public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
     /**
@@ -72,22 +73,27 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
             } else {
                 selected = new ArrayList<>(forks);
                 while (selected.size() < forks) {
+                    // 根据 loadbalance ，选出可以调用的 invoker
                     Invoker<T> invoker = select(loadbalance, invocation, invokers, selected);
-                    if (!selected.contains(invoker)) {
+                    if (!selected.contains(invoker)) {// 作去重，避免前n次都拿一个调
                         //Avoid add the same invoker several times.
                         selected.add(invoker);
                     }
                 }
             }
+            // 将要调用的 invokers 放到 rpc 上下文
+            //  RpcContext.getContext()-----> 拿到本线程的 rpc 上下文
             RpcContext.getContext().setInvokers((List) selected);
             final AtomicInteger count = new AtomicInteger();
             final BlockingQueue<Object> ref = new LinkedBlockingQueue<>();
             for (final Invoker<T> invoker : selected) {
                 executor.execute(() -> {
                     try {
+                        // 先调用，然后将结果塞到线程安全队列中
                         Result result = invoker.invoke(invocation);
                         ref.offer(result);
                     } catch (Throwable e) {
+                        // 如果有异常，就将记述递增，如果发现增满了，就把异常作为结果塞进结果队列
                         int value = count.incrementAndGet();
                         if (value >= selected.size()) {
                             ref.offer(e);
@@ -96,6 +102,7 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 });
             }
             try {
+                // 从结果队列中拿到第一个结果
                 Object ret = ref.poll(timeout, TimeUnit.MILLISECONDS);
                 if (ret instanceof Throwable) {
                     Throwable e = (Throwable) ret;
@@ -106,6 +113,7 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 throw new RpcException("Failed to forking invoke provider " + selected + ", but no luck to perform the invocation. Last error is: " + e.getMessage(), e);
             }
         } finally {
+            // 清理 rpc 上下文
             // clear attachments which is binding to current thread.
             RpcContext.getContext().clearAttachments();
         }

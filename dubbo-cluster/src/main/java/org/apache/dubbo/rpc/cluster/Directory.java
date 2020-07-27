@@ -31,6 +31,7 @@ import java.util.List;
  *
  * @see org.apache.dubbo.rpc.cluster.Cluster#join(Directory)
  */
+// 多个 invoker 引用的统一封装，类似字典一样
 public interface Directory<T> extends Node {
 
     /**

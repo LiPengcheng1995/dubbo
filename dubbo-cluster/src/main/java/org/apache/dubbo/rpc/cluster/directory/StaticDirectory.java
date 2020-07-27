@@ -71,7 +71,7 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
         if (isDestroyed()) {
             return false;
         }
-        for (Invoker<T> invoker : invokers) {
+        for (Invoker<T> invoker : invokers) {//有一个 invoker 可用就可用
             if (invoker.isAvailable()) {
                 return true;
             }
@@ -86,9 +86,9 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
         }
         super.destroy();
         for (Invoker<T> invoker : invokers) {
-            invoker.destroy();
+            invoker.destroy();// 全部 destroy
         }
-        invokers.clear();
+        invokers.clear();//释放引用
     }
 
     public void buildRouterChain() {
@@ -102,11 +102,13 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
         List<Invoker<T>> finalInvokers = invokers;
         if (routerChain != null) {
             try {
+                //  RouterChain 为不同注册中心服务之间的调度策略，此处通过 routerChain 的策略选出可以调用的 invokers
                 finalInvokers = routerChain.route(getConsumerUrl(), invocation);
             } catch (Throwable t) {
                 logger.error("Failed to execute router: " + getUrl() + ", cause: " + t.getMessage(), t);
             }
         }
+        // 如果没有配置 routerChain ，就直接全部返回
         return finalInvokers == null ? Collections.emptyList() : finalInvokers;
     }
 
