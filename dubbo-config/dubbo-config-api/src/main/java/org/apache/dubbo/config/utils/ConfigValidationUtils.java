@@ -166,6 +166,7 @@ public class ConfigValidationUtils {
     private static final Pattern PATTERN_KEY = Pattern.compile("[*,\\-._0-9a-zA-Z]+");
 
 
+    //拿到传入的配置的注册中心的 url（先拿到本服务配置的注册中心，然后把本服务的参数基本参数填上去）
     public static List<URL> loadRegistries(AbstractInterfaceConfig interfaceConfig, boolean provider) {
         // check && override if necessary
         List<URL> registryList = new ArrayList<URL>();
