@@ -446,7 +446,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         resolveFile();
         ConfigValidationUtils.validateReferenceConfig(this);// 校验参数配置是否合理。。。先放过
         // 拿到所有的后处理器，都调用后处理器加工一下本配置
-        // TODO 这里没看到有直接的实现类，应该是让第三方框架自己扩展的 SPI
+        // 这里没看到有直接的实现类，应该是让第三方框架自己扩展的 SPI
         postProcessConfig();
     }
 

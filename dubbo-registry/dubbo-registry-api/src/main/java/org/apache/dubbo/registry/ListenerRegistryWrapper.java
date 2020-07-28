@@ -56,6 +56,7 @@ public class ListenerRegistryWrapper implements Registry {
         try {
             registry.register(url);
         } finally {
+            // 这是增加注册失败对监听器的支持
             if (CollectionUtils.isNotEmpty(listeners)) {
                 RuntimeException exception = null;
                 for (RegistryServiceListener listener : listeners) {

@@ -226,6 +226,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         return failedNotified;
     }
 
+    // 注册失败，支持定时重试
     @Override
     public void register(URL url) {
         if (!acceptable(url)) {

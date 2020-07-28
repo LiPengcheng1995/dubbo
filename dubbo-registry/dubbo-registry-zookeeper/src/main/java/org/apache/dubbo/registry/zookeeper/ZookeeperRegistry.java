@@ -173,14 +173,20 @@ public class ZookeeperRegistry extends FailbackRegistry {
             } else {
                 List<URL> urls = new ArrayList<>();
                 for (String path : toCategoriesPath(url)) {
+                    // 补充上这个url
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
+                    // 补充上对应的 listener 的调用方法，这里对于 ChildListener 用表达式做了一个匿名类，
+                    // 匿名类是对本类的一个方法的封装
                     ChildListener zkListener = listeners.computeIfAbsent(listener, k -> (parentPath, currentChilds) -> ZookeeperRegistry.this.notify(url, k, toUrlsWithEmpty(url, parentPath, currentChilds)));
+                    // 创建节点
                     zkClient.create(path, false);
+                    // 监听子节点变动
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+                // 订阅完成，然后手动调用通知，将全量信息发送一遍
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {

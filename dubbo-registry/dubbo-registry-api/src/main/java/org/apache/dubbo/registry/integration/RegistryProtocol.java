@@ -479,9 +479,12 @@ public class RegistryProtocol implements Protocol {
         URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);
         if (directory.isShouldRegister()) {
             directory.setRegisteredConsumerUrl(subscribeUrl);
+            // 完成在注册中心的注册【注意，对于服务调用端来说，这里的注册只是创建了 consumer 的路径，并没有订阅】
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        // 根据订阅的 url ，拿到对应的调度策略
         directory.buildRouterChain(subscribeUrl);
+        // 注册订阅
         directory.subscribe(toSubscribeUrl(subscribeUrl));
 
         Invoker<T> invoker = cluster.join(directory);
