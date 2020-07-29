@@ -93,6 +93,7 @@ public class RouterChain<T> {
      * @param invocation
      * @return
      */
+    // RouterChain 就是针对 Router 的封装，循环调用 Router 即可
     public List<Invoker<T>> route(URL url, Invocation invocation) {
         List<Invoker<T>> finalInvokers = invokers;
         for (Router router : routers) {
