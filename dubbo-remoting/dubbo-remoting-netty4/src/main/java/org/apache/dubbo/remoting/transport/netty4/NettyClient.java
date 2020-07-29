@@ -161,6 +161,7 @@ public class NettyClient extends AbstractClient {
                             NettyChannel.removeChannelIfDisconnected(newChannel);
                         }
                     } else {
+                        // 连接成功后保存 channel
                         NettyClient.this.channel = newChannel;
                     }
                 }

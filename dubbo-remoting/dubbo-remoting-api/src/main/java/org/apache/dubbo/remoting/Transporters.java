@@ -68,6 +68,7 @@ public class Transporters {
         if (url == null) {
             throw new IllegalArgumentException("url == null");
         }
+        // 和上面一样，多 handler 封装成一个 dispatcher
         ChannelHandler handler;
         if (handlers == null || handlers.length == 0) {
             handler = new ChannelHandlerAdapter();
@@ -76,6 +77,7 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // Transporter 用来进行 clinet 的启动和连接
         return getTransporter().connect(url, handler);
     }
 

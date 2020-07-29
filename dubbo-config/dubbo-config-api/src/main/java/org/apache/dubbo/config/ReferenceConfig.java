@@ -286,7 +286,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         } else {
             // 清理 url
             urls.clear();
-            if (url != null && url.length() > 0) { // TODO 。。。。。。感觉这里不会走到
+            if (url != null && url.length() > 0) {
                 // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {

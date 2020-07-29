@@ -58,6 +58,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
 
         initExecutor(url);
 
+        // 创建 netty 的 bootstrap
         try {
             doOpen();
         } catch (Throwable t) {
@@ -67,6 +68,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                             + " connect to the server " + getRemoteAddress() + ", cause: " + t.getMessage(), t);
         }
         try {
+            // 连接远程地址
             // connect.
             connect();
             if (logger.isInfoEnabled()) {
