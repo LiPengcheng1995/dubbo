@@ -56,12 +56,16 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Result doInvoke(Invocation invocation, final List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         List<Invoker<T>> copyInvokers = invokers;
+        // 校验 invokers 列表不能为空
         checkInvokers(copyInvokers, invocation);
         String methodName = RpcUtils.getMethodName(invocation);
+
+        // 从 url 中拿到方法级别配置的重试策略（次数）
         int len = getUrl().getMethodParameter(methodName, RETRIES_KEY, DEFAULT_RETRIES) + 1;
         if (len <= 0) {
             len = 1;
         }
+
         // retry loop.
         RpcException le = null; // last exception.
         List<Invoker<T>> invoked = new ArrayList<Invoker<T>>(copyInvokers.size()); // invoked invokers.
@@ -70,13 +74,18 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
             if (i > 0) {
+                // 检测本 invoker 是否可用
                 checkWhetherDestroyed();
+                // 每次重试前，重新列举，避免服务改动引起的问题
                 copyInvokers = list(invocation);
+                // 校验 invokers 列表不能为空
                 // check again
                 checkInvokers(copyInvokers, invocation);
             }
+            // 通过负载均衡选择 Invoker
             Invoker<T> invoker = select(loadbalance, invocation, copyInvokers, invoked);
             invoked.add(invoker);
+            // 设置 invoked 到 RPC 上下文中
             RpcContext.getContext().setInvokers((List) invoked);
             try {
                 Result result = invoker.invoke(invocation);
@@ -91,6 +100,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                             + " using the dubbo version " + Version.getVersion() + ". Last error is: "
                             + le.getMessage(), le);
                 }
+                // 调用成功直接返回
                 return result;
             } catch (RpcException e) {
                 if (e.isBiz()) { // biz exception.
