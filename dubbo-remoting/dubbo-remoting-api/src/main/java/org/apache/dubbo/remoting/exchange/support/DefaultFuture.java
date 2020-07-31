@@ -79,8 +79,9 @@ public class DefaultFuture extends CompletableFuture<Object> {
     private DefaultFuture(Channel channel, Request request, int timeout) {
         this.channel = channel;
         this.request = request;
-        this.id = request.getId();
+        this.id = request.getId();// 拿到 request 对应的本机唯一 id
         this.timeout = timeout > 0 ? timeout : channel.getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+        // 在全局 map 维护 id和 Future、channel 的关系
         // put into waiting map.
         FUTURES.put(id, this);
         CHANNELS.put(id, channel);
@@ -106,10 +107,11 @@ public class DefaultFuture extends CompletableFuture<Object> {
      */
     public static DefaultFuture newFuture(Channel channel, Request request, int timeout, ExecutorService executor) {
         final DefaultFuture future = new DefaultFuture(channel, request, timeout);
-        future.setExecutor(executor);
+        // 回环引用。。。。。方便互相获得
+        future.setExecutor(executor);// 这里 future 完成可以拿到阻塞占用的 executor，然后唤醒
         // ThreadlessExecutor needs to hold the waiting future in case of circuit return.
         if (executor instanceof ThreadlessExecutor) {
-            ((ThreadlessExecutor) executor).setWaitingFuture(future);
+            ((ThreadlessExecutor) executor).setWaitingFuture(future);// executor 通过 future阻塞
         }
         // timeout check
         timeoutCheck(future);
@@ -165,6 +167,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
 
     public static void received(Channel channel, Response response, boolean timeout) {
         try {
+            // 根据 id 拿到等结果的 future
             DefaultFuture future = FUTURES.remove(response.getId());
             if (future != null) {
                 Timeout t = future.timeoutCheckTask;
@@ -172,6 +175,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
                     // decrease Time
                     t.cancel();
                 }
+                // 调用 future 的 doReceived() ，将返回结果传回去
                 future.doReceived(response);
             } else {
                 logger.warn("The timeout response finally returned at "
@@ -181,6 +185,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
                         + " -> " + channel.getRemoteAddress()) + ", please check provider side for detailed result.");
             }
         } finally {
+            // 移除 id 对应的 channel 【处理器】
             CHANNELS.remove(response.getId());
         }
     }
@@ -204,6 +209,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
         if (res == null) {
             throw new IllegalStateException("response cannot be null");
         }
+        // 设置结果
         if (res.getStatus() == Response.OK) {
             this.complete(res.getResult());
         } else if (res.getStatus() == Response.CLIENT_TIMEOUT || res.getStatus() == Response.SERVER_TIMEOUT) {
@@ -212,6 +218,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
             this.completeExceptionally(new RemotingException(channel, res.getErrorMessage()));
         }
 
+        // 唤醒阻塞的线程,唤醒的方法为向 ThreadlessExecutor 的任务队列中塞一个任务
         // the result is returning, but the caller thread may still waiting
         // to avoid endless waiting for whatever reason, notify caller thread to return.
         if (executor != null && executor instanceof ThreadlessExecutor) {

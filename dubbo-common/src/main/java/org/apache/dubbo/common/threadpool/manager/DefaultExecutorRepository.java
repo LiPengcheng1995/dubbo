@@ -110,7 +110,7 @@ public class DefaultExecutorRepository implements ExecutorRepository {
         if (executor != null) {
             if (executor.isShutdown() || executor.isTerminated()) {
                 executors.remove(portKey);
-                executor = createExecutor(url);
+                executor = createExecutor(url);// 根据url维护一个线程池
                 executors.put(portKey, executor);
             }
         }

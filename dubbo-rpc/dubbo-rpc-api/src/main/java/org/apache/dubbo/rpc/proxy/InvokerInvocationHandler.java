@@ -50,6 +50,7 @@ public class InvokerInvocationHandler implements InvocationHandler {
         }
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
+        // Object 自己的方法，直接调用
         if (parameterTypes.length == 0) {
             if ("toString".equals(methodName)) {
                 return invoker.toString();
@@ -62,6 +63,7 @@ public class InvokerInvocationHandler implements InvocationHandler {
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
             return invoker.equals(args[0]);
         }
+        // 构建 RpcInvocation 进行调用
         RpcInvocation rpcInvocation = new RpcInvocation(method, invoker.getInterface().getName(), args);
         String serviceKey = invoker.getUrl().getServiceKey();
         rpcInvocation.setTargetServiceUniqueName(serviceKey);

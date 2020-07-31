@@ -174,6 +174,7 @@ public class AsyncRpcResult implements Result {
 
     @Override
     public Result get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        // 如果有配置 executor，且 executor 需要阻塞。就阻塞等待
         if (executor != null && executor instanceof ThreadlessExecutor) {
             ThreadlessExecutor threadlessExecutor = (ThreadlessExecutor) executor;
             threadlessExecutor.waitAndDrain();

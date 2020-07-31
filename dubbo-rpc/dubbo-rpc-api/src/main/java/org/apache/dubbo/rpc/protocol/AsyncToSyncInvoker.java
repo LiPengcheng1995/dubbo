@@ -47,11 +47,13 @@ public class AsyncToSyncInvoker<T> implements Invoker<T> {
         return invoker.getInterface();
     }
 
+    // 同步调用和异步调用的功能支持
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
         Result asyncResult = invoker.invoke(invocation);
 
         try {
+            // 同步调用，就手动调用一下get()
             if (InvokeMode.SYNC == ((RpcInvocation) invocation).getInvokeMode()) {
                 /**
                  * NOTICE!

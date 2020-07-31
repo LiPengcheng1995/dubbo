@@ -86,6 +86,7 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
         inv.setAttachment(PATH_KEY, getUrl().getPath());
         inv.setAttachment(VERSION_KEY, version);
 
+        // 从 clients 数组中获取 ExchangeClient
         ExchangeClient currentClient;
         if (clients.length == 1) {
             currentClient = clients[0];
@@ -93,13 +94,18 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
             currentClient = clients[index.getAndIncrement() % clients.length];
         }
         try {
+            // isOneway 为 true，表示“单向”通信
             boolean isOneway = RpcUtils.isOneway(getUrl(), invocation);
             int timeout = calculateTimeout(invocation, methodName);
-            if (isOneway) {
+            if (isOneway) {// 异步无返回值
                 boolean isSent = getUrl().getMethodParameter(methodName, Constants.SENT_KEY, false);
                 currentClient.send(inv, isSent);
                 return AsyncRpcResult.newDefaultAsyncResult(invocation);
             } else {
+                // 异步有返回值
+
+                // getUrl() 为要调用的服务端的 url
+                // 根据 url 和 inv 拿到要调用的端对应的监听线程池
                 ExecutorService executor = getCallbackExecutor(getUrl(), inv);
                 CompletableFuture<AppResponse> appResponseFuture =
                         currentClient.request(inv, timeout, executor).thenApply(obj -> (AppResponse) obj);
