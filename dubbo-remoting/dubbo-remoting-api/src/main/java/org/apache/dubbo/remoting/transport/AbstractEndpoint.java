@@ -45,7 +45,7 @@ public abstract class AbstractEndpoint extends AbstractPeer implements Resetable
 
     public AbstractEndpoint(URL url, ChannelHandler handler) {
         super(url, handler);
-        this.codec = getChannelCodec(url);// TODO 这也是个解码的功能，但是目前不知道干啥的
+        this.codec = getChannelCodec(url);// TODO 这个是通信解码的东西，如果是 dubbo 协议，前面会设置好
         this.timeout = url.getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
         this.connectTimeout = url.getPositiveParameter(Constants.CONNECT_TIMEOUT_KEY, Constants.DEFAULT_CONNECT_TIMEOUT);
     }

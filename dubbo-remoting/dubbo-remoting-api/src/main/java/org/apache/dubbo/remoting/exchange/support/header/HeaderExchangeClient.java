@@ -58,8 +58,10 @@ public class HeaderExchangeClient implements ExchangeClient {
         this.client = client;
         this.channel = new HeaderExchangeChannel(client);
 
+        // 支持心跳包
         if (startTimer) {
             URL url = client.getUrl();
+            // 基本逻辑都是new 任务，把channel、心跳间隔、重试时间记录好，然后提交任务到 IDLE_CHECK_TIMER 定时执行吧
             startReconnectTask(url);
             startHeartBeatTask(url);
         }
